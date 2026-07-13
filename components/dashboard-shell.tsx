@@ -8,13 +8,14 @@ import { useTenant } from "./tenant-context";
 type NavItem = {
   label: string;
   href: string;
+  requiredModule?: string;
 };
 
 const navItems: NavItem[] = [
   { label: "Overview", href: "/" },
   { label: "Students", href: "/students" },
-  { label: "Academics", href: "/academics" },
-  { label: "Billing", href: "/billing" }
+  { label: "Academics", href: "/academics", requiredModule: "ACADEMICS" },
+  { label: "Billing", href: "/billing", requiredModule: "FINANCE" }
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const userRole = session?.user?.role ?? "TEACHER";
   const userName = session?.user?.name ?? "User";
+  const activeModules = session?.user?.activeModules ?? [];
   const userInitials = userName
     .split(" ")
     .map((namePart) => namePart[0])
@@ -35,7 +37,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .toUpperCase();
 
-  const filteredNavItems = userRole === "TEACHER" ? navItems.filter((item) => item.href !== "/billing") : navItems;
+  const filteredNavItems = navItems.filter((item) => {
+    if (!item.requiredModule) {
+      return true;
+    }
+
+    return activeModules.includes(item.requiredModule);
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

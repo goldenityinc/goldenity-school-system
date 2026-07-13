@@ -1,7 +1,6 @@
-import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import prisma from "./prisma";
+import { verifyLoginWithCentralCommand } from "./services/central-command";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -23,26 +22,8 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        });
-
-        if (!user) {
-          return null;
-        }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          tenantId: user.tenantId ?? null
-        };
+        const user = await verifyLoginWithCentralCommand(credentials.email, credentials.password);
+        return user;
       }
     })
   ],
@@ -51,7 +32,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.tenantId = user.tenantId;
+        token.tenantId = user.tenantId ?? null;
+        token.activeModules = Array.isArray(user.activeModules) ? user.activeModules : [];
       }
 
       return token;
@@ -61,6 +43,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = String(token.id ?? "");
         session.user.role = String(token.role ?? "TEACHER");
         session.user.tenantId = token.tenantId ? String(token.tenantId) : null;
+        session.user.activeModules = Array.isArray(token.activeModules) ? token.activeModules : [];
       }
 
       return session;
