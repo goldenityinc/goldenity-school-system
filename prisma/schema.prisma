@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  TEACHER
+  STAFF
+}
+
+enum RegistrationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED
+  COMPLETED
+}
+
+enum GradeLetter {
+  A
+  B
+  C
+  D
+  E
+  F
+  INCOMPLETE
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  role        String   @default("TEACHER")
+  tenantId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lecturer    Lecturer?
+  createdRegs StudentRegistration[] @relation("CreatedByUser")
+
+  @@index([tenantId])
+}
+
+model Lecturer {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String?  @unique
+  staffId         String
+  fullName        String
+  email           String
+  specialization  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  courseOfferings CourseOffering[]
+  homeroomClasses Classroom[]      @relation("ClassroomHomeroomTeacher")
+
+  @@unique([tenantId, staffId])
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model StudentRegistration {
+  id               String             @id @default(cuid())
+  tenantId         String
+  registrationNo   String
+  fullName         String
+  email            String?
+  phone            String?
+  dateOfBirth      DateTime?
+  status           RegistrationStatus @default(DRAFT)
+  studentId        String?
+  createdByUserId  String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  student          Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdByUser    User?    @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, registrationNo])
+  @@index([tenantId])
+}
+
+model Student {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  classroomId        String?
+  studentNumber      String
+  fullName           String
+  email              String?
+  gender             String?
+  placeOfBirth       String?
+  dateOfBirth        DateTime?
+  address            String?
+  fatherName         String?
+  motherName         String?
+  parentPhone        String?
+  parentJob          String?
+  previousSchool     String?
+  previousReportCard Json?
+  enrollmentDate     DateTime
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  registrations      StudentRegistration[]
+  enrollments        Enrollment[]
+  invoices           Invoice[]
+  classroom          Classroom?            @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  grades             Grade[]
+
+  @@unique([tenantId, studentNumber])
+  @@index([tenantId])
+}
+
+model Classroom {
+  id                String   @id @default(cuid())
+  tenantId          String
+  name              String
+  academicYear      String
+  semester          Int
+  homeroomTeacherId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  homeroomTeacher   Lecturer @relation("ClassroomHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: Restrict)
+  students          Student[]
+  courseOfferings   CourseOffering[]
+
+  @@unique([tenantId, name, academicYear, semester])
+  @@index([tenantId])
+  @@index([homeroomTeacherId])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  tenantId    String
+  studentId   String
+  title       String
+  amount      Float
+  dueDate     DateTime
+  status      String        @default("UNPAID")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  payments    Payment[]
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  tenantId     String
+  invoiceId    String
+  amountPaid   Float
+  paymentDate  DateTime
+  method       String
+  reference    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  tenantId    String
+  title       String
+  amount      Float
+  category    String
+  expenseDate DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([expenseDate])
+}
+
+model Course {
+  id              String   @id @default(cuid())
+  tenantId        String
+  code            String
+  name            String
+  description     String?
+  creditHours     Int      @default(3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  offerings       CourseOffering[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model CourseOffering {
+  id              String   @id @default(cuid())
+  tenantId        String
+  courseId        String
+  lecturerId      String?
+  classroomId     String?
+  term            String
+  academicYear    String
+  section         String?
+  capacity        Int?
+  dayOfWeek       String?
+  startTime       String?
+  endTime         String?
+  room            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  course          Course      @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  lecturer        Lecturer?   @relation(fields: [lecturerId], references: [id], onDelete: SetNull)
+  classroom       Classroom?  @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  enrollments     Enrollment[]
+  grades          Grade[]
+
+  @@unique([tenantId, courseId, term, academicYear, section])
+  @@index([tenantId])
+  @@index([courseId])
+  @@index([lecturerId])
+  @@index([classroomId])
+}
+
+model Enrollment {
+  id               String           @id @default(cuid())
+  tenantId         String
+  studentId        String
+  courseOfferingId String
+  status           EnrollmentStatus @default(ENROLLED)
+  enrolledAt       DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  student          Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  courseOffering   CourseOffering   @relation(fields: [courseOfferingId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, studentId, courseOfferingId])
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([courseOfferingId])
+}
+
+model Grade {
+  id               String         @id @default(cuid())
+  tenantId         String
+  studentId        String
+  courseOfferingId String
+  score            Float
+  type             String
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  student          Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseOffering   CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([courseOfferingId])
+  @@index([tenantId, studentId, courseOfferingId])
+}

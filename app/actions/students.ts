@@ -1,0 +1,264 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
+import prisma from "../../lib/prisma";
+import { StudentSchema, type CreateStudentInput } from "../../lib/student-schema";
+
+type CreateStudentResult =
+  | { success: true; id: string }
+  | { success: false; errors: Partial<Record<keyof CreateStudentInput, string>> };
+
+export async function getStudents(tenantId: string, query?: string) {
+  const trimmedQuery = query?.trim();
+
+  const students = await prisma.student.findMany({
+    where: {
+      tenantId,
+      ...(trimmedQuery
+        ? {
+            OR: [
+              {
+                fullName: {
+                  contains: trimmedQuery,
+                  mode: "insensitive"
+                }
+              },
+              {
+                studentNumber: {
+                  contains: trimmedQuery,
+                  mode: "insensitive"
+                }
+              }
+            ]
+          }
+        : {})
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: {
+          courseOffering: {
+            include: {
+              course: true
+            }
+          }
+        }
+      },
+      grades: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          courseOffering: {
+            select: {
+              id: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return students.map((student) => ({
+    ...(() => {
+      const latestEnrollment = student.enrollments[0];
+      const relatedGrade = latestEnrollment
+        ? student.grades.find((grade) => grade.courseOfferingId === latestEnrollment.courseOfferingId) ?? student.grades[0]
+        : student.grades[0];
+
+      return {
+        id: student.id,
+        nis: student.studentNumber,
+        name: student.fullName,
+        registrationDate: student.createdAt.toISOString(),
+        latestEnrollment: latestEnrollment
+          ? {
+              status: latestEnrollment.status,
+              courseName: latestEnrollment.courseOffering.course.name,
+              gradeLetter: relatedGrade?.type ?? null,
+              gradeScore: relatedGrade ? String(relatedGrade.score) : null
+            }
+          : null
+      };
+    })()
+  }));
+}
+
+export async function getStudentById(tenantId: string, studentId: string) {
+  const student = await prisma.student.findFirst({
+    where: {
+      id: studentId,
+      tenantId
+    },
+    include: {
+      classroom: {
+        select: {
+          id: true,
+          name: true,
+          academicYear: true,
+          semester: true
+        }
+      },
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          courseOffering: {
+            include: {
+              course: true,
+              lecturer: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!student) {
+    return null;
+  }
+
+  return {
+    id: student.id,
+    nis: student.studentNumber,
+    name: student.fullName,
+    gender: student.gender,
+    placeOfBirth: student.placeOfBirth,
+    dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
+    address: student.address,
+    fatherName: student.fatherName,
+    motherName: student.motherName,
+    parentPhone: student.parentPhone,
+    parentJob: student.parentJob,
+    previousSchool: student.previousSchool,
+    classroom: student.classroom
+      ? {
+          id: student.classroom.id,
+          name: student.classroom.name,
+          academicYear: student.classroom.academicYear,
+          semester: student.classroom.semester
+        }
+      : null,
+    enrollments: student.enrollments.map((enrollment) => ({
+      id: enrollment.id,
+      status: enrollment.status,
+      dayOfWeek: enrollment.courseOffering.dayOfWeek,
+      startTime: enrollment.courseOffering.startTime,
+      endTime: enrollment.courseOffering.endTime,
+      room: enrollment.courseOffering.room,
+      course: {
+        id: enrollment.courseOffering.course.id,
+        code: enrollment.courseOffering.course.code,
+        name: enrollment.courseOffering.course.name
+      },
+      lecturer: enrollment.courseOffering.lecturer
+        ? {
+            id: enrollment.courseOffering.lecturer.id,
+            name: enrollment.courseOffering.lecturer.fullName,
+            nip: enrollment.courseOffering.lecturer.staffId
+          }
+        : null
+    }))
+  };
+}
+
+export async function createStudent(tenantId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
+  const parsed = StudentSchema.safeParse(data);
+
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+
+    return {
+      success: false,
+      errors: {
+        name: fieldErrors.name?.[0],
+        nis: fieldErrors.nis?.[0]
+      }
+    };
+  }
+
+  const cleanedData = parsed.data;
+
+  const createdStudent = await prisma.student.create({
+    data: {
+      tenantId,
+      fullName: cleanedData.name.trim(),
+      studentNumber: cleanedData.nis.trim(),
+      gender: cleanedData.gender?.trim() || null,
+      placeOfBirth: cleanedData.placeOfBirth?.trim() || null,
+      dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
+      address: cleanedData.address?.trim() || null,
+      fatherName: cleanedData.fatherName?.trim() || null,
+      motherName: cleanedData.motherName?.trim() || null,
+      parentPhone: cleanedData.parentPhone?.trim() || null,
+      parentJob: cleanedData.parentJob?.trim() || null,
+      previousSchool: cleanedData.previousSchool?.trim() || null,
+      previousReportCard: cleanedData.previousReportCard === null ? Prisma.JsonNull : cleanedData.previousReportCard,
+      enrollmentDate: new Date()
+    }
+  });
+
+  revalidatePath("/students");
+  return { success: true, id: createdStudent.id };
+}
+
+export async function deleteStudent(id: string, tenantId: string) {
+  const student = await prisma.student.findFirst({
+    where: {
+      id,
+      tenantId
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (!student) {
+    throw new Error("Student tidak ditemukan untuk tenant aktif.");
+  }
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: {
+      studentId: id,
+      tenantId
+    },
+    select: {
+      id: true
+    }
+  });
+
+  const enrollmentIds = enrollments.map((enrollment) => enrollment.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (enrollmentIds.length > 0) {
+      await tx.grade.deleteMany({
+        where: {
+          tenantId,
+          studentId: id
+        }
+      });
+    }
+
+    await tx.enrollment.deleteMany({
+      where: {
+        tenantId,
+        studentId: id
+      }
+    });
+
+    await tx.studentRegistration.deleteMany({
+      where: {
+        tenantId,
+        studentId: id
+      }
+    });
+
+    await tx.student.delete({
+      where: {
+        id
+      }
+    });
+  });
+
+  revalidatePath("/students");
+}
