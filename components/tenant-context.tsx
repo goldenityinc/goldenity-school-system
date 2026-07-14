@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type TenantOption = {
   label: string;
@@ -24,6 +24,41 @@ export function TenantProvider({
   initialTenantId?: string | null;
 }) {
   const [selectedTenant, setSelectedTenant] = useState(initialTenantId ?? "");
+
+  useEffect(() => {
+    if (selectedTenant) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function hydrateTenantFromSession() {
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        cache: "no-store"
+      });
+
+      if (!isActive || !response.ok) {
+        return;
+      }
+
+      const payload = (await response.json().catch(() => null)) as
+        | { authenticated?: boolean; session?: { tenantId?: string | null } }
+        | null;
+
+      const tenantId = payload?.authenticated ? payload.session?.tenantId : null;
+
+      if (tenantId) {
+        setSelectedTenant(tenantId);
+      }
+    }
+
+    void hydrateTenantFromSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedTenant]);
 
   const value = useMemo(() => {
     const tenantOptions: TenantOption[] = selectedTenant

@@ -15,11 +15,11 @@ const FALLBACK_METRICS: DashboardMetrics = {
 export default async function Home() {
   const session = await getCurrentSession();
 
-  if (!session) {
+  if (!session?.tenantId) {
     redirect("/login");
   }
 
-  const tenantId = session.tenantId ?? "tenant-sd-01";
+  const tenantId = session.tenantId;
   let metrics = FALLBACK_METRICS;
 
   try {
