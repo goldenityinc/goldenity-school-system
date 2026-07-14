@@ -31,6 +31,8 @@ export function TenantProvider({
     }
 
     let isActive = true;
+    let attempt = 0;
+    const maxAttempts = 6;
 
     async function hydrateTenantFromSession() {
       const response = await fetch("/api/auth/session", {
@@ -50,6 +52,16 @@ export function TenantProvider({
 
       if (tenantId) {
         setSelectedTenant(tenantId);
+        return;
+      }
+
+      attempt += 1;
+      if (attempt < maxAttempts) {
+        setTimeout(() => {
+          if (isActive) {
+            void hydrateTenantFromSession();
+          }
+        }, 500);
       }
     }
 

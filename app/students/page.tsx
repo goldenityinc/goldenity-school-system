@@ -59,6 +59,12 @@ export default function StudentsPage() {
   useEffect(() => {
     let isActive = true;
 
+    if (!selectedTenant) {
+      return () => {
+        isActive = false;
+      };
+    }
+
     async function loadStudents() {
       try {
         setIsLoading(true);

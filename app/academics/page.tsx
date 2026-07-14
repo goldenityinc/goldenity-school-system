@@ -267,6 +267,12 @@ export default function AcademicsPage() {
   useEffect(() => {
     let isActive = true;
 
+    if (!selectedTenant) {
+      return () => {
+        isActive = false;
+      };
+    }
+
     async function syncAcademics() {
       if (!isActive) {
         return;
@@ -315,6 +321,10 @@ export default function AcademicsPage() {
 
   useEffect(() => {
     if (!selectedClassId) {
+      return;
+    }
+
+    if (!selectedTenant) {
       return;
     }
 

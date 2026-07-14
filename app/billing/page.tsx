@@ -124,6 +124,12 @@ export default function BillingPage() {
   useEffect(() => {
     let isActive = true;
 
+    if (!selectedTenant) {
+      return () => {
+        isActive = false;
+      };
+    }
+
     async function syncFinanceData() {
       try {
         setIsLoading(true);

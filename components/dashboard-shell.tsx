@@ -21,7 +21,7 @@ const navItems: NavItem[] = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { selectedTenant, setSelectedTenant, tenantOptions, activeTenantLabel } = useTenant();
+  const { selectedTenant, activeTenantLabel } = useTenant();
   const [session, setSession] = useState<{ user?: { role?: string; name?: string; allowedSolutions?: string[] } } | null>(null);
 
   useEffect(() => {
@@ -138,35 +138,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <p className="text-xs text-slate-500">Tenant aktif</p>
               </div>
 
-              <div className="flex flex-1 flex-wrap items-center justify-center gap-3">
-                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
-                  <span className="text-slate-400">Tenant Switcher</span>
-                  <select
-                    aria-label="Tenant switcher"
-                    className="bg-transparent text-sm font-medium text-slate-900 outline-none"
-                    value={selectedTenant}
-                    onChange={(event) => setSelectedTenant(event.target.value)}
-                  >
-                    {tenantOptions.map((tenant) => (
-                      <option key={tenant.value} value={tenant.value}>
-                        {tenant.label} ({tenant.value})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <form className="w-full max-w-xs sm:w-auto" role="search">
-                  <label htmlFor="global-search" className="sr-only">
-                    Search students or schools
-                  </label>
-                  <input
-                    id="global-search"
-                    type="search"
-                    placeholder="Search students, schools..."
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none ring-yellow-500 placeholder:text-slate-400 focus:ring-2"
-                  />
-                </form>
-              </div>
+              <div className="flex-1" />
 
               <button className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50" type="button">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-yellow-500">{userInitials || "U"}</span>

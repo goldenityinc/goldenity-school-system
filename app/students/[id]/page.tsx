@@ -77,6 +77,12 @@ export default function StudentDetailPage() {
   useEffect(() => {
     let isActive = true;
 
+    if (!selectedTenant) {
+      return () => {
+        isActive = false;
+      };
+    }
+
     async function loadStudent() {
       try {
         setIsLoading(true);

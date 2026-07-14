@@ -89,6 +89,12 @@ export default function StudentReportCardPage() {
   useEffect(() => {
     let isActive = true;
 
+    if (!selectedTenant) {
+      return () => {
+        isActive = false;
+      };
+    }
+
     async function loadReportCard() {
       try {
         setIsLoading(true);
