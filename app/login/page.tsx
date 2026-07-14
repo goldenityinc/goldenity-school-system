@@ -1,39 +1,56 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-
-const SCHOOL_SOLUTION = "SCHOOL_ERP";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { status } = useSession();
   const [email, setEmail] = useState("admin@goldenity.com");
   const [password, setPassword] = useState("password123");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/");
+    let isActive = true;
+
+    async function checkSession() {
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        cache: "no-store"
+      });
+
+      if (!isActive) {
+        return;
+      }
+
+      if (response.ok) {
+        router.replace("/");
+      }
     }
-  }, [router, status]);
+
+    void checkSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      solution: SCHOOL_SOLUTION,
-      redirect: false
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
     });
 
-    if (result?.error) {
-      setErrorMessage("Email atau password tidak valid.");
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      setErrorMessage(payload?.message ?? "Email atau password tidak valid.");
       setIsSubmitting(false);
       return;
     }

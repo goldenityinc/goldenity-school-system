@@ -37,6 +37,10 @@ export async function getDashboardMetrics(tenantId: string): Promise<DashboardMe
   const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const todayAliases = dayAliasesByIndex[now.getDay()];
 
+  // Tenant isolation rule:
+  // Always source tenantId from decoded JWT session (getCurrentSession())
+  // and apply it to every Prisma query, e.g. prisma.student.findMany({ where: { tenantId: session.tenantId } }).
+
   const [totalActiveStudents, totalTeachers, totalClassrooms, monthlyRevenueAgg, todaySchedule] = await Promise.all([
     prisma.student.count({
       where: {

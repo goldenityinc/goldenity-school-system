@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useTenant } from "./tenant-context";
 
 type NavItem = {
@@ -19,9 +19,56 @@ const navItems: NavItem[] = [
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { selectedTenant, setSelectedTenant, tenantOptions, activeTenantLabel } = useTenant();
-  const { data: session } = useSession();
+  const [session, setSession] = useState<{ user?: { role?: string; name?: string; allowedSolutions?: string[] } } | null>(null);
+
+  useEffect(() => {
+    if (pathname === "/login") {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadSession() {
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        cache: "no-store"
+      });
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!response.ok) {
+        router.replace("/login");
+        return;
+      }
+
+      const payload = (await response.json()) as {
+        session?: {
+          role?: string;
+          name?: string;
+          allowedSolutions?: string[];
+        };
+      };
+
+      setSession({
+        user: {
+          role: payload.session?.role,
+          name: payload.session?.name,
+          allowedSolutions: payload.session?.allowedSolutions
+        }
+      });
+    }
+
+    void loadSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [pathname, router]);
 
   if (pathname === "/login") {
     return <>{children}</>;
@@ -29,7 +76,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const userRole = session?.user?.role ?? "TEACHER";
   const userName = session?.user?.name ?? "User";
-  const activeModules = session?.user?.activeModules ?? [];
+  const activeModules = session?.user?.allowedSolutions ?? [];
   const userInitials = userName
     .split(" ")
     .map((namePart) => namePart[0])
@@ -38,6 +85,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     .toUpperCase();
 
   const filteredNavItems = navItems.filter((item) => {
+    if (activeModules.includes("SCHOOL_ERP")) {
+      return true;
+    }
+
     if (!item.requiredModule) {
       return true;
     }
@@ -127,7 +178,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <button
                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 type="button"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  router.replace("/login");
+                }}
               >
                 Logout
               </button>

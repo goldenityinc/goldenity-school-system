@@ -1,18 +1,17 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { getDashboardMetrics } from "./actions/dashboard";
 import { DashboardOverview } from "../components/dashboard-overview";
-import { authOptions } from "../lib/auth";
+import { getCurrentSession } from "../lib/utils/jwt";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentSession();
 
-  if (!session?.user) {
+  if (!session) {
     redirect("/login");
   }
 
-  const tenantId = session.user.tenantId ?? "tenant-sd-01";
+  const tenantId = session.tenantId ?? "tenant-sd-01";
   const metrics = await getDashboardMetrics(tenantId);
 
-  return <DashboardOverview userName={session.user.name ?? "User"} userRole={session.user.role ?? "TEACHER"} metrics={metrics} />;
+  return <DashboardOverview userName={session.name ?? "User"} userRole={session.role ?? "TEACHER"} metrics={metrics} />;
 }
