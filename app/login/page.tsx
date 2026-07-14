@@ -70,16 +70,16 @@ export default function LoginPage() {
         <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-              Email
+              Username / Email
             </label>
             <input
               id="email"
               name="email"
-              type="email"
+              type="text"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="Masukkan email"
+              placeholder="Masukkan username atau email"
               autoComplete="off"
               required
             />

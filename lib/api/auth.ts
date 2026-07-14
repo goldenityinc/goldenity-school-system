@@ -71,10 +71,17 @@ function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {
 
 export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise<string> {
   const baseUrl = resolveAdminCoreBaseUrl();
+  const tenantSlug = process.env.CENTRAL_COMMAND_TENANT_SLUG || process.env.NEXT_PUBLIC_TENANT_SLUG || undefined;
+  const loginIdentifier = payload.email.trim();
   const loginPayload = {
-    email: payload.email,
+    // Admin Core login contract expects `username`; keep `email` for backward compatibility.
+    username: loginIdentifier,
+    email: loginIdentifier,
     password: payload.password,
-    solution: payload.solution ?? (process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP")
+    solution: payload.solution ?? (process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP"),
+    tenantSlug,
+    tenant_slug: tenantSlug,
+    kode_perusahaan: tenantSlug
   };
 
   console.log("LOGIN PAYLOAD:", loginPayload);
@@ -114,6 +121,10 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
       if (textBody.trim().length > 0) {
         message = textBody;
       }
+    }
+
+    if (response.status === 400 && !tenantSlug) {
+      message = "Konfigurasi tenant belum lengkap. Set env CENTRAL_COMMAND_TENANT_SLUG di deployment School ERP.";
     }
 
     throw new AdminCoreAuthError(message, response.status, errorData);
