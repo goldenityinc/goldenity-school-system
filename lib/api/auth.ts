@@ -1,4 +1,3 @@
-const SCHOOL_SOLUTION = "SCHOOL_ERP";
 export const AUTH_TOKEN_COOKIE_NAME = "goldenity_school_auth_token";
 
 type AdminCoreLoginPayload = {
@@ -27,29 +26,37 @@ function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {
 
 export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise<string> {
   const baseUrl = resolveAdminCoreBaseUrl();
+  const loginPayload = {
+    email: payload.email,
+    password: payload.password,
+    solution: process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP"
+  };
+
+  console.log("LOGIN PAYLOAD:", loginPayload);
 
   const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      email: payload.email,
-      password: payload.password,
-      solution: payload.solution ?? process.env.CENTRAL_COMMAND_SOLUTION ?? SCHOOL_SOLUTION
-    }),
+    body: JSON.stringify(loginPayload),
     cache: "no-store"
   });
 
   if (!response.ok) {
     let message = "Email atau password tidak valid.";
+    let errorData: unknown = null;
 
     try {
       const errorJson = (await response.json()) as { message?: string };
+      errorData = errorJson;
+      console.error("LOGIN FAILED FROM BACKEND:", errorData);
+
       if (typeof errorJson.message === "string" && errorJson.message.trim().length > 0) {
         message = errorJson.message;
       }
     } catch {
+      console.error("LOGIN FAILED FROM BACKEND:", { status: response.status, message: "Non-JSON error response" });
       // Use fallback message when backend body is not JSON.
     }
 
