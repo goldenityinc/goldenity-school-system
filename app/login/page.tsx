@@ -24,7 +24,13 @@ export default function LoginPage() {
         return;
       }
 
-      if (response.ok) {
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json().catch(() => null)) as { authenticated?: boolean } | null;
+
+      if (payload?.authenticated) {
         router.replace("/");
       }
     }
@@ -38,26 +44,45 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage(null);
 
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ tenantSlug, email, password })
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      setErrorMessage(payload?.message ?? "Email atau password tidak valid.");
-      setIsSubmitting(false);
+    if (isSubmitting) {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tenantSlug, email, password }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        setErrorMessage(payload?.message ?? "Username atau password tidak valid.");
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setErrorMessage("Request login timeout. Silakan coba lagi.");
+      } else {
+        setErrorMessage("Terjadi kendala koneksi saat login. Coba beberapa saat lagi.");
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      setIsSubmitting(false);
+    }
   }
 
   return (

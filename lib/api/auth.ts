@@ -90,14 +90,25 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
   let response: Response | null = null;
 
   for (const endpoint of loginEndpoints) {
-    const attempt = await fetch(`${baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(loginPayload),
-      cache: "no-store"
-    });
+    let attempt: Response;
+
+    try {
+      attempt = await fetch(`${baseUrl}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(loginPayload),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000)
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        throw new AdminCoreAuthError("Request ke Admin Core timeout. Silakan coba lagi.", 504);
+      }
+
+      throw new AdminCoreAuthError("Gagal terhubung ke Admin Core. Periksa koneksi layanan backend.", 503);
+    }
 
     response = attempt;
 
