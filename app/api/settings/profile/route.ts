@@ -187,7 +187,7 @@ export async function PUT(request: Request) {
         where: {
           id: session.userId
         },
-        data: {
+        create: {
           name: session.name?.trim() || session.email || "Pengguna",
           email: localEmail,
           password: generatedPassword,
