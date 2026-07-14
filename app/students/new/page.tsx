@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { CreateStudentInput } from "../../../lib/student-schema";
 
@@ -147,9 +147,7 @@ export default function NewStudentWizardPage() {
     dateInput.click();
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  function submitStudent() {
     if (!validateStepOne()) {
       setCurrentStep(1);
       return;
@@ -245,7 +243,7 @@ export default function NewStudentWizardPage() {
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div>
       ) : null}
 
-      <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+      <form className="mt-6 space-y-6" onSubmit={(event) => event.preventDefault()}>
         {currentStep === 1 ? (
           <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
             <legend className="px-1 text-sm font-semibold text-slate-900">Langkah 1: Data Pribadi</legend>
@@ -336,7 +334,8 @@ export default function NewStudentWizardPage() {
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={submitStudent}
                 disabled={isPending}
                 className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
