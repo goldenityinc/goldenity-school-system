@@ -44,13 +44,17 @@ export async function POST(request: Request) {
   }
 
   if (!result.success) {
+    const hasFieldErrors = Boolean(result.errors && Object.values(result.errors).some(Boolean));
+
     return NextResponse.json(
       {
         success: false,
         message: result.message ?? "Gagal menyimpan murid.",
         errors: result.errors
       },
-      { status: result.message?.includes("NIS sudah terdaftar") ? 409 : 400 }
+      {
+        status: result.message?.includes("NIS sudah terdaftar") ? 409 : hasFieldErrors ? 422 : 400
+      }
     );
   }
 

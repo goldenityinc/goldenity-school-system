@@ -22,6 +22,8 @@ type StudentWizardFormState = {
 type FieldErrors = {
   name?: string;
   nis?: string;
+  parentPhone?: string;
+  dateOfBirth?: string;
 };
 
 const initialFormState: StudentWizardFormState = {
@@ -182,18 +184,37 @@ export default function NewStudentWizardPage() {
           body: JSON.stringify(payload)
         });
 
-        const result = (await response.json().catch(() => null)) as
+        const rawText = await response.text();
+        let result = null as
           | { success?: boolean; message?: string; errors?: FieldErrors }
           | null;
 
-        if (!response.ok || !result?.success) {
-          const nextErrors = result?.errors ?? {};
-          setErrorMessage(result?.message ?? "Gagal menyimpan murid.");
+        if (rawText) {
+          try {
+            result = JSON.parse(rawText) as { success?: boolean; message?: string; errors?: FieldErrors };
+          } catch {
+            result = { success: false, message: rawText };
+          }
+        }
+
+        const normalizedResult = result as
+          | { success?: boolean; message?: string; errors?: FieldErrors }
+          | null;
+
+        if (!response.ok || !normalizedResult?.success) {
+          const nextErrors = normalizedResult?.errors ?? {};
+          setErrorMessage(normalizedResult?.message ?? "Gagal menyimpan murid.");
           setFieldErrors({
             name: nextErrors.name,
-            nis: nextErrors.nis
+            nis: nextErrors.nis,
+            parentPhone: nextErrors.parentPhone,
+            dateOfBirth: nextErrors.dateOfBirth
           });
           if (nextErrors.name || nextErrors.nis) {
+            setCurrentStep(1);
+          } else if (nextErrors.parentPhone) {
+            setCurrentStep(2);
+          } else if (nextErrors.dateOfBirth) {
             setCurrentStep(1);
           }
           return;
@@ -243,6 +264,7 @@ export default function NewStudentWizardPage() {
                 onOpen={openDatePicker}
                 formatDateForDisplay={formatDateForDisplay}
               />
+              {fieldErrors.dateOfBirth ? <p className="-mt-2 text-xs text-red-600 md:col-span-2">{fieldErrors.dateOfBirth}</p> : null}
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Alamat</label>
                 <textarea
@@ -262,6 +284,7 @@ export default function NewStudentWizardPage() {
               <Input label="Nama Ayah" value={formData.fatherName} onChange={(value) => updateField("fatherName", value)} />
               <Input label="Nama Ibu" value={formData.motherName} onChange={(value) => updateField("motherName", value)} />
               <Input label="Nomor Telepon" value={formData.parentPhone} onChange={(value) => updateField("parentPhone", value.replace(/[^\d+]/g, ""))} inputMode="tel" placeholder="+62812..." />
+              {fieldErrors.parentPhone ? <p className="-mt-2 text-xs text-red-600 md:col-span-2">{fieldErrors.parentPhone}</p> : null}
               <Input label="Pekerjaan" value={formData.parentJob} onChange={(value) => updateField("parentJob", value)} />
             </div>
           </fieldset>

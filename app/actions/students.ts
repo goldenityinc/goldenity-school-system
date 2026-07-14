@@ -197,13 +197,19 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
 
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
+    const firstError = parsed.error.issues[0]?.message;
 
     return {
       success: false,
       errors: {
         name: fieldErrors.name?.[0],
-        nis: fieldErrors.nis?.[0]
-      }
+        nis: fieldErrors.nis?.[0],
+        parentPhone: fieldErrors.parentPhone?.[0],
+        dateOfBirth: fieldErrors.dateOfBirth?.[0],
+        gender: fieldErrors.gender?.[0],
+        previousReportCard: fieldErrors.previousReportCard?.[0]
+      },
+      message: firstError ?? "Data murid tidak valid. Periksa input dan coba lagi."
     };
   }
 
