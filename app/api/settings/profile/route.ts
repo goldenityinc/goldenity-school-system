@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { getCurrentSession } from "../../../../lib/utils/jwt";
@@ -29,6 +30,33 @@ async function getLocalUser(sessionUserId: string, email?: string) {
   });
 }
 
+async function hasDatabaseColumn(tableName: string, columnName: string) {
+  const result = await prisma.$queryRaw<{ exists: boolean }[]>(Prisma.sql`
+    SELECT EXISTS(
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+        AND column_name = ${columnName}
+    ) AS "exists";
+  `);
+
+  return result[0]?.exists ?? false;
+}
+
+async function hasDatabaseTable(tableName: string) {
+  const result = await prisma.$queryRaw<{ exists: boolean }[]>(Prisma.sql`
+    SELECT EXISTS(
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name = ${tableName}
+    ) AS "exists";
+  `);
+
+  return result[0]?.exists ?? false;
+}
+
 export async function GET() {
   const session = await getCurrentSession();
 
@@ -36,13 +64,37 @@ export async function GET() {
     return NextResponse.json({ message: "Sesi tidak ditemukan." }, { status: 401 });
   }
 
+  const [canReadTenantSlug, canReadProfilePhotoUrl, hasTenantBrandingTable] = await Promise.all([
+    hasDatabaseColumn("User", "tenantSlug").catch(() => false),
+    hasDatabaseColumn("User", "profilePhotoUrl").catch(() => false),
+    hasDatabaseTable("TenantBranding").catch(() => false)
+  ]);
+
   let user: Awaited<ReturnType<typeof getLocalUser>> | null = null;
   let branding: { logoUrl: string | null } | null = null;
-  let readOnly = false;
 
   try {
-    user = await getLocalUser(session.userId, session.email);
-    branding = session.tenantId
+    user = await prisma.user.findFirst({
+      where: {
+        OR: [{ id: session.userId }, ...(session.email ? [{ email: session.email }] : [])]
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        ...(canReadTenantSlug ? { tenantSlug: true } : {}),
+        ...(canReadProfilePhotoUrl ? { profilePhotoUrl: true } : {}),
+        password: true
+      }
+    });
+  } catch (error) {
+    console.error("[settings.profile.GET.user]", error);
+  }
+
+  try {
+    branding = session.tenantId && hasTenantBrandingTable
       ? await prisma.tenantBranding.findUnique({
           where: {
             tenantId: session.tenantId
@@ -53,8 +105,7 @@ export async function GET() {
         })
       : null;
   } catch (error) {
-    readOnly = true;
-    console.error("[settings.profile.GET]", error);
+    console.error("[settings.profile.GET.branding]", error);
   }
 
   return NextResponse.json({
@@ -64,12 +115,10 @@ export async function GET() {
       email: user?.email ?? session.email ?? null,
       role: user?.role ?? session.role,
       tenantId: user?.tenantId ?? session.tenantId,
-      tenantSlug: user?.tenantSlug ?? null,
-      profilePhotoUrl: user?.profilePhotoUrl ?? null,
+      tenantSlug: canReadTenantSlug ? user?.tenantSlug ?? null : session.tenantName ?? null,
+      profilePhotoUrl: canReadProfilePhotoUrl ? user?.profilePhotoUrl ?? null : null,
       tenantLogoUrl: branding?.logoUrl ?? null
-    },
-    readOnly,
-    message: readOnly ? "Data profil lokal belum tersinkron. Pengaturan saat ini hanya bisa dilihat." : undefined
+    }
   });
 }
 
@@ -85,6 +134,11 @@ export async function PUT(request: Request) {
   }
 
   const body = (await request.json()) as SettingsPayload;
+
+  const [canWriteProfilePhotoUrl, hasTenantBrandingTable] = await Promise.all([
+    hasDatabaseColumn("User", "profilePhotoUrl").catch(() => false),
+    hasDatabaseTable("TenantBranding").catch(() => false)
+  ]);
 
   let user: Awaited<ReturnType<typeof getLocalUser>> | null = null;
 
@@ -113,7 +167,7 @@ export async function PUT(request: Request) {
     updates.name = body.name.trim();
   }
 
-  if (body.profilePhotoUrl !== undefined) {
+  if (body.profilePhotoUrl !== undefined && canWriteProfilePhotoUrl) {
     updates.profilePhotoUrl = body.profilePhotoUrl?.trim() || null;
   }
 
@@ -142,7 +196,7 @@ export async function PUT(request: Request) {
       data: updates
     });
 
-    if (body.tenantLogoUrl !== undefined) {
+    if (body.tenantLogoUrl !== undefined && hasTenantBrandingTable) {
       await prisma.tenantBranding.upsert({
         where: {
           tenantId: session.tenantId
