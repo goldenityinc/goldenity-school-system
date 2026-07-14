@@ -86,15 +86,32 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
   };
 
   console.log("LOGIN PAYLOAD:", loginPayload);
+  const loginEndpoints = ["/auth/login", "/api/v1/auth/login"];
+  let response: Response | null = null;
 
-  const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(loginPayload),
-    cache: "no-store"
-  });
+  for (const endpoint of loginEndpoints) {
+    const attempt = await fetch(`${baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(loginPayload),
+      cache: "no-store"
+    });
+
+    response = attempt;
+
+    // Try fallback endpoint only when route is not available.
+    if ((attempt.status === 404 || attempt.status === 405) && endpoint !== loginEndpoints[loginEndpoints.length - 1]) {
+      continue;
+    }
+
+    break;
+  }
+
+  if (!response) {
+    throw new AdminCoreAuthError("Gagal menghubungi layanan autentikasi Admin Core.", 503);
+  }
 
   if (!response.ok) {
     let message = "Email atau password tidak valid.";
@@ -121,6 +138,8 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
 
       if (textBody.trim().length > 0) {
         message = textBody;
+      } else if (response.status === 401) {
+        message = "Login ditolak Admin Core. Periksa tenant slug, username, password, dan akses solusi SCHOOL_ERP.";
       }
     }
 
