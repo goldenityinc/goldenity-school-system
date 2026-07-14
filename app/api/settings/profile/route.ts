@@ -36,14 +36,26 @@ export async function GET() {
     return NextResponse.json({ message: "Sesi tidak ditemukan." }, { status: 401 });
   }
 
-  const user = await getLocalUser(session.userId, session.email);
-  const branding = session.tenantId
-    ? await prisma.tenantBranding.findUnique({
-        where: {
-          tenantId: session.tenantId
-        }
-      })
-    : null;
+  let user: Awaited<ReturnType<typeof getLocalUser>> | null = null;
+  let branding: { logoUrl: string | null } | null = null;
+  let readOnly = false;
+
+  try {
+    user = await getLocalUser(session.userId, session.email);
+    branding = session.tenantId
+      ? await prisma.tenantBranding.findUnique({
+          where: {
+            tenantId: session.tenantId
+          },
+          select: {
+            logoUrl: true
+          }
+        })
+      : null;
+  } catch (error) {
+    readOnly = true;
+    console.error("[settings.profile.GET]", error);
+  }
 
   return NextResponse.json({
     profile: {
@@ -55,7 +67,9 @@ export async function GET() {
       tenantSlug: user?.tenantSlug ?? null,
       profilePhotoUrl: user?.profilePhotoUrl ?? null,
       tenantLogoUrl: branding?.logoUrl ?? null
-    }
+    },
+    readOnly,
+    message: readOnly ? "Data profil lokal belum tersinkron. Pengaturan saat ini hanya bisa dilihat." : undefined
   });
 }
 
@@ -66,8 +80,20 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "Sesi tidak ditemukan." }, { status: 401 });
   }
 
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json({ message: "Database belum terhubung. Pengaturan belum bisa disimpan." }, { status: 503 });
+  }
+
   const body = (await request.json()) as SettingsPayload;
-  const user = await getLocalUser(session.userId, session.email);
+
+  let user: Awaited<ReturnType<typeof getLocalUser>> | null = null;
+
+  try {
+    user = await getLocalUser(session.userId, session.email);
+  } catch (error) {
+    console.error("[settings.profile.PUT.local-user]", error);
+    return NextResponse.json({ message: "Data akun lokal belum tersedia. Coba lagi setelah sinkronisasi." }, { status: 503 });
+  }
 
   if (!user) {
     return NextResponse.json({ message: "Akun lokal tidak ditemukan." }, { status: 404 });
@@ -108,26 +134,31 @@ export async function PUT(request: Request) {
     updates.password = await bcrypt.hash(body.newPassword, 10);
   }
 
-  await prisma.user.update({
-    where: {
-      id: user.id
-    },
-    data: updates
-  });
-
-  if (body.tenantLogoUrl !== undefined) {
-    await prisma.tenantBranding.upsert({
+  try {
+    await prisma.user.update({
       where: {
-        tenantId: session.tenantId
+        id: user.id
       },
-      update: {
-        logoUrl: body.tenantLogoUrl?.trim() || null
-      },
-      create: {
-        tenantId: session.tenantId,
-        logoUrl: body.tenantLogoUrl?.trim() || null
-      }
+      data: updates
     });
+
+    if (body.tenantLogoUrl !== undefined) {
+      await prisma.tenantBranding.upsert({
+        where: {
+          tenantId: session.tenantId
+        },
+        update: {
+          logoUrl: body.tenantLogoUrl?.trim() || null
+        },
+        create: {
+          tenantId: session.tenantId,
+          logoUrl: body.tenantLogoUrl?.trim() || null
+        }
+      });
+    }
+  } catch (error) {
+    console.error("[settings.profile.PUT.persist]", error);
+    return NextResponse.json({ message: "Penyimpanan pengaturan gagal karena data backend belum siap." }, { status: 503 });
   }
 
   return NextResponse.json({ success: true });

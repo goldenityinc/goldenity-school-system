@@ -14,6 +14,12 @@ type SettingsProfile = {
   tenantLogoUrl: string | null;
 };
 
+type SettingsProfileResponse = {
+  profile?: SettingsProfile;
+  message?: string;
+  readOnly?: boolean;
+};
+
 function isTenantAdmin(role?: string) {
   return role === "TENANT_ADMIN";
 }
@@ -39,6 +45,7 @@ export default function SettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [readOnlyMode, setReadOnlyMode] = useState(false);
   const [profile, setProfile] = useState<SettingsProfile | null>(null);
   const [name, setName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -53,7 +60,7 @@ export default function SettingsPage() {
       try {
         setLoading(true);
         const response = await fetch("/api/settings/profile", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as { profile?: SettingsProfile; message?: string } | null;
+        const payload = (await response.json().catch(() => null)) as SettingsProfileResponse | null;
 
         if (!response.ok) {
           throw new Error(payload?.message ?? "Gagal memuat pengaturan.");
@@ -67,6 +74,10 @@ export default function SettingsPage() {
         setName(payload.profile.name ?? "");
         setProfilePhotoUrl(payload.profile.profilePhotoUrl ?? null);
         setTenantLogoUrl(payload.profile.tenantLogoUrl ?? null);
+        setReadOnlyMode(Boolean(payload.readOnly));
+        if (payload.readOnly) {
+          setErrorMessage(payload.message ?? "Data profil lokal belum tersinkron. Pengaturan hanya bisa dilihat.");
+        }
       } catch (error) {
         if (isActive) {
           setErrorMessage(error instanceof Error ? error.message : "Gagal memuat pengaturan.");
@@ -86,6 +97,7 @@ export default function SettingsPage() {
   }, []);
 
   const canEditLogo = isTenantAdmin(profile?.role);
+  const canSubmit = !submitting && !readOnlyMode;
 
   const previewInitials = useMemo(() => {
     const fallback = (name || profile?.name || "Pengguna").trim();
@@ -233,10 +245,10 @@ export default function SettingsPage() {
         <div className="flex items-center justify-end">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={!canSubmit}
             className="inline-flex h-10 items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Menyimpan..." : "Simpan Pengaturan"}
+            {submitting ? "Menyimpan..." : readOnlyMode ? "Backend Belum Siap" : "Simpan Pengaturan"}
           </button>
         </div>
       </form>
