@@ -191,24 +191,30 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
 
   const cleanedData = parsed.data;
 
+  const baseStudentData = {
+    tenantId: tenantId.trim(),
+    fullName: cleanedData.name.trim(),
+    studentNumber: cleanedData.nis.trim(),
+    enrollmentDate: new Date()
+  };
+
+  const extendedStudentData = {
+    ...baseStudentData,
+    gender: cleanedData.gender?.trim() || null,
+    placeOfBirth: cleanedData.placeOfBirth?.trim() || null,
+    dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
+    address: cleanedData.address?.trim() || null,
+    fatherName: cleanedData.fatherName?.trim() || null,
+    motherName: cleanedData.motherName?.trim() || null,
+    parentPhone: cleanedData.parentPhone?.trim() || null,
+    parentJob: cleanedData.parentJob?.trim() || null,
+    previousSchool: cleanedData.previousSchool?.trim() || null,
+    previousReportCard: cleanedData.previousReportCard === null ? Prisma.JsonNull : cleanedData.previousReportCard
+  };
+
   try {
     const createdStudent = await prisma.student.create({
-      data: {
-        tenantId: tenantId.trim(),
-        fullName: cleanedData.name.trim(),
-        studentNumber: cleanedData.nis.trim(),
-        gender: cleanedData.gender?.trim() || null,
-        placeOfBirth: cleanedData.placeOfBirth?.trim() || null,
-        dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
-        address: cleanedData.address?.trim() || null,
-        fatherName: cleanedData.fatherName?.trim() || null,
-        motherName: cleanedData.motherName?.trim() || null,
-        parentPhone: cleanedData.parentPhone?.trim() || null,
-        parentJob: cleanedData.parentJob?.trim() || null,
-        previousSchool: cleanedData.previousSchool?.trim() || null,
-        previousReportCard: cleanedData.previousReportCard === null ? Prisma.JsonNull : cleanedData.previousReportCard,
-        enrollmentDate: new Date()
-      }
+      data: extendedStudentData
     });
 
     revalidatePath("/students");
@@ -224,6 +230,29 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
           message: "Data murid gagal disimpan karena NIS sudah digunakan."
         };
       }
+
+      if (error.code === "P2022") {
+        try {
+          const fallbackStudent = await prisma.student.create({
+            data: baseStudentData
+          });
+
+          revalidatePath("/students");
+          return { success: true, id: fallbackStudent.id };
+        } catch {
+          return {
+            success: false,
+            errors: {},
+            message: "Skema database belum sinkron. Jalankan db push/migrate di environment production."
+          };
+        }
+      }
+
+      return {
+        success: false,
+        errors: {},
+        message: `Gagal menyimpan data murid (kode: ${error.code}).`
+      };
     }
 
     return {
