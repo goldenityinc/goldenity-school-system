@@ -30,6 +30,29 @@ async function getLocalUser(sessionUserId: string, email?: string) {
   });
 }
 
+async function getLocalUserSafe(sessionUserId: string, email?: string) {
+  const [canReadTenantSlug, canReadProfilePhotoUrl] = await Promise.all([
+    hasDatabaseColumn("User", "tenantSlug").catch(() => false),
+    hasDatabaseColumn("User", "profilePhotoUrl").catch(() => false)
+  ]);
+
+  return prisma.user.findFirst({
+    where: {
+      OR: [{ id: sessionUserId }, ...(email ? [{ email }] : [])]
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      tenantId: true,
+      ...(canReadTenantSlug ? { tenantSlug: true } : {}),
+      ...(canReadProfilePhotoUrl ? { profilePhotoUrl: true } : {}),
+      password: true
+    }
+  });
+}
+
 async function hasDatabaseColumn(tableName: string, columnName: string) {
   const result = await prisma.$queryRaw<{ exists: boolean }[]>(Prisma.sql`
     SELECT EXISTS(
@@ -140,10 +163,10 @@ export async function PUT(request: Request) {
     hasDatabaseTable("TenantBranding").catch(() => false)
   ]);
 
-  let user: Awaited<ReturnType<typeof getLocalUser>> | null = null;
+  let user: Awaited<ReturnType<typeof getLocalUserSafe>> | null = null;
 
   try {
-    user = await getLocalUser(session.userId, session.email);
+    user = await getLocalUserSafe(session.userId, session.email);
   } catch (error) {
     console.error("[settings.profile.PUT.local-user]", error);
     return NextResponse.json({ message: "Data akun lokal belum tersedia. Coba lagi setelah sinkronisasi." }, { status: 503 });
