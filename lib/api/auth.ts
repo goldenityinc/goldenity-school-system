@@ -62,7 +62,7 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
   const loginPayload = {
     email: payload.email,
     password: payload.password,
-    solution: payload.solution ?? process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP"
+    solution: payload.solution ?? (process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP")
   };
 
   console.log("LOGIN PAYLOAD:", loginPayload);
