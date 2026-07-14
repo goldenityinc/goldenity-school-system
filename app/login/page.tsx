@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+const SCHOOL_SOLUTION = "SCHOOL_ERP";
+
 export default function LoginPage() {
   const router = useRouter();
   const { status } = useSession();
@@ -26,6 +28,7 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email,
       password,
+      solution: SCHOOL_SOLUTION,
       redirect: false
     });
 

@@ -17,6 +17,9 @@ type CentralCommandErrorResponse = {
   message?: string;
 };
 
+const DEFAULT_SCHOOL_SOLUTION = "SCHOOL_ERP";
+const DEFAULT_ADMIN_CORE_API_URL = "https://goldenity-admin-core-api.vercel.app";
+
 async function readErrorMessage(response: Response) {
   try {
     const data = (await response.json()) as CentralCommandErrorResponse;
@@ -26,19 +29,23 @@ async function readErrorMessage(response: Response) {
   }
 }
 
-export async function verifyLoginWithCentralCommand(email: string, password: string): Promise<CentralCommandUser> {
-  const baseUrl = process.env.CENTRAL_COMMAND_URL;
+export async function verifyLoginWithCentralCommand(
+  email: string,
+  password: string,
+  requestedSolution?: string
+): Promise<CentralCommandUser> {
+  const baseUrl =
+    process.env.CENTRAL_COMMAND_URL ?? process.env.GOLDENITY_ADMIN_CORE_API_URL ?? DEFAULT_ADMIN_CORE_API_URL;
+  const solution = requestedSolution ?? process.env.CENTRAL_COMMAND_SOLUTION ?? DEFAULT_SCHOOL_SOLUTION;
 
-  if (!baseUrl) {
-    throw new Error("CENTRAL_COMMAND_URL is not configured.");
-  }
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
-  const response = await fetch(`${baseUrl}/api/v1/auth/verify`, {
+  const response = await fetch(`${normalizedBaseUrl}/api/v1/auth/verify`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, solution }),
     cache: "no-store"
   });
 

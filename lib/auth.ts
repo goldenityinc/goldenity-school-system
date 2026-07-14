@@ -22,7 +22,11 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await verifyLoginWithCentralCommand(credentials.email, credentials.password);
+        const solution = typeof (credentials as Record<string, unknown>).solution === "string"
+          ? ((credentials as Record<string, string>).solution ?? "")
+          : undefined;
+
+        const user = await verifyLoginWithCentralCommand(credentials.email, credentials.password, solution);
         return user;
       }
     })
