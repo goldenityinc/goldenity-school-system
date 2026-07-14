@@ -1,9 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createStudent } from "../../actions/students";
-import { useTenant } from "../../../components/tenant-context";
 import type { CreateStudentInput } from "../../../lib/student-schema";
 
 type StudentWizardFormState = {
@@ -70,7 +68,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 
 export default function NewStudentWizardPage() {
   const router = useRouter();
-  const { selectedTenant } = useTenant();
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<StudentWizardFormState>(initialFormState);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -113,6 +111,37 @@ export default function NewStudentWizardPage() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   }
 
+  function formatDateForDisplay(value: string) {
+    if (!value) {
+      return "";
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }).format(date);
+  }
+
+  function openDatePicker() {
+    const dateInput = dateInputRef.current;
+    if (!dateInput) {
+      return;
+    }
+
+    if (typeof dateInput.showPicker === "function") {
+      dateInput.showPicker();
+      return;
+    }
+
+    dateInput.click();
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -142,15 +171,26 @@ export default function NewStudentWizardPage() {
             : null
         };
 
-        const result = await createStudent(selectedTenant, payload);
+        const response = await fetch("/api/students", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
 
-        if (!result.success) {
-          setErrorMessage(result.message ?? "Gagal menyimpan murid.");
+        const result = (await response.json().catch(() => null)) as
+          | { success?: boolean; message?: string; errors?: FieldErrors }
+          | null;
+
+        if (!response.ok || !result?.success) {
+          const nextErrors = result?.errors ?? {};
+          setErrorMessage(result?.message ?? "Gagal menyimpan murid.");
           setFieldErrors({
-            name: result.errors.name,
-            nis: result.errors.nis
+            name: nextErrors.name,
+            nis: nextErrors.nis
           });
-          if (result.errors.name || result.errors.nis) {
+          if (nextErrors.name || nextErrors.nis) {
             setCurrentStep(1);
           }
           return;
@@ -192,7 +232,14 @@ export default function NewStudentWizardPage() {
               {fieldErrors.name ? <p className="-mt-2 text-xs text-red-600 md:col-span-2">{fieldErrors.name}</p> : null}
               <SelectInput label="Jenis Kelamin" value={formData.gender} onChange={(value) => updateField("gender", value)} options={["", "Laki-laki", "Perempuan"]} />
               <Input label="Tempat Lahir" value={formData.placeOfBirth} onChange={(value) => updateField("placeOfBirth", value)} />
-              <Input label="Tanggal Lahir" type="date" value={formData.dateOfBirth} onChange={(value) => updateField("dateOfBirth", value)} lang="id" />
+              <DatePickerField
+                label="Tanggal Lahir"
+                value={formData.dateOfBirth}
+                onChange={(value) => updateField("dateOfBirth", value)}
+                inputRef={dateInputRef}
+                onOpen={openDatePicker}
+                formatDateForDisplay={formatDateForDisplay}
+              />
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Alamat</label>
                 <textarea
@@ -292,6 +339,57 @@ function Input({ label, value, onChange, type = "text", required = false, inputM
         lang={lang}
         className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
       />
+    </div>
+  );
+}
+
+function DatePickerField({
+  label,
+  value,
+  onChange,
+  inputRef,
+  onOpen,
+  formatDateForDisplay
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  inputRef: React.MutableRefObject<HTMLInputElement | null>;
+  onOpen: () => void;
+  formatDateForDisplay: (value: string) => string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      <div className="relative">
+        <input
+          type="text"
+          readOnly
+          value={formatDateForDisplay(value)}
+          placeholder="DD/MM/YYYY"
+          onClick={onOpen}
+          className="h-10 w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 pr-10 text-sm outline-none ring-yellow-500 focus:ring-2"
+        />
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-500"
+          aria-label="Pilih tanggal"
+        >
+          📅
+        </button>
+        <input
+          ref={(node) => {
+            inputRef.current = node;
+          }}
+          type="date"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      </div>
     </div>
   );
 }
