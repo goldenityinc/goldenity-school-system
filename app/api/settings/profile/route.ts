@@ -158,8 +158,9 @@ export async function PUT(request: Request) {
 
   const body = (await request.json()) as SettingsPayload;
 
-  const [canWriteProfilePhotoUrl, hasTenantBrandingTable] = await Promise.all([
+  const [canWriteProfilePhotoUrl, canWriteTenantSlug, hasTenantBrandingTable] = await Promise.all([
     hasDatabaseColumn("User", "profilePhotoUrl").catch(() => false),
+    hasDatabaseColumn("User", "tenantSlug").catch(() => false),
     hasDatabaseTable("TenantBranding").catch(() => false)
   ]);
 
@@ -173,7 +174,39 @@ export async function PUT(request: Request) {
   }
 
   if (!user) {
-    return NextResponse.json({ message: "Akun lokal tidak ditemukan." }, { status: 404 });
+    if (!session.email) {
+      return NextResponse.json({ message: "Akun lokal tidak ditemukan dan email session kosong. Silakan login ulang." }, { status: 400 });
+    }
+
+    try {
+      const generatedPassword = await bcrypt.hash(`local-seed:${session.userId}:${Date.now()}`, 10);
+
+      user = await prisma.user.create({
+        data: {
+          id: session.userId,
+          name: session.name?.trim() || session.email,
+          email: session.email,
+          password: generatedPassword,
+          role: session.role,
+          tenantId: session.tenantId,
+          ...(canWriteTenantSlug ? { tenantSlug: session.tenantName ?? null } : {}),
+          ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: null } : {})
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          tenantId: true,
+          ...(canWriteTenantSlug ? { tenantSlug: true } : {}),
+          ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: true } : {}),
+          password: true
+        }
+      });
+    } catch (error) {
+      console.error("[settings.profile.PUT.auto-provision]", error);
+      return NextResponse.json({ message: "Akun lokal tidak ditemukan dan gagal dibuat otomatis." }, { status: 503 });
+    }
   }
 
   const updates: {
