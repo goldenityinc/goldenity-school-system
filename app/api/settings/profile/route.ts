@@ -85,6 +85,22 @@ async function hasDatabaseTable(tableName: string) {
   return result[0]?.exists ?? false;
 }
 
+function formatPrismaError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return `Operasi database ditolak (kode: ${error.code}).`;
+  }
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return "Koneksi database belum siap.";
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Terjadi kesalahan backend yang tidak dikenali.";
+}
+
 export async function GET() {
   const session = await getCurrentSession();
 
@@ -255,14 +271,24 @@ export async function PUT(request: Request) {
   }
 
   try {
-    await prisma.user.update({
-      where: {
-        id: user.id
-      },
-      data: updates
-    });
+    if (Object.keys(updates).length > 0) {
+      await prisma.user.update({
+        where: {
+          id: user.id
+        },
+        data: updates
+      });
+    }
+  } catch (error) {
+    console.error("[settings.profile.PUT.user-update]", error);
+    return NextResponse.json(
+      { message: `Penyimpanan profil gagal. ${formatPrismaError(error)}` },
+      { status: 503 }
+    );
+  }
 
-    if (body.tenantLogoUrl !== undefined && hasTenantBrandingTable) {
+  if (body.tenantLogoUrl !== undefined && hasTenantBrandingTable && session.tenantId) {
+    try {
       await prisma.tenantBranding.upsert({
         where: {
           tenantId: session.tenantId
@@ -275,11 +301,17 @@ export async function PUT(request: Request) {
           logoUrl: body.tenantLogoUrl?.trim() || null
         }
       });
+    } catch (error) {
+      console.error("[settings.profile.PUT.tenant-branding]", error);
+      return NextResponse.json(
+        {
+          success: true,
+          warning: `Profil tersimpan, tetapi logo tenant gagal diperbarui. ${formatPrismaError(error)}`
+        },
+        { status: 200 }
+      );
     }
-  } catch (error) {
-    console.error("[settings.profile.PUT.persist]", error);
-    return NextResponse.json({ message: "Penyimpanan pengaturan gagal karena data backend belum siap." }, { status: 503 });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, { status: 200 });
 }
