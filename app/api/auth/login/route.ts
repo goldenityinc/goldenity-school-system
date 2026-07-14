@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "../../../../lib/prisma";
 import { AUTH_TOKEN_COOKIE_NAME, AdminCoreAuthError, loginViaAdminCore } from "../../../../lib/api/auth";
-import { createGatewayToken, decodeJwtPayload } from "../../../../lib/utils/jwt";
+import {
+  AUTH_TENANT_LABEL_COOKIE_NAME,
+  createGatewayToken,
+  decodeJwtPayload
+} from "../../../../lib/utils/jwt";
 
 type LoginBody = {
   email?: string;
@@ -91,6 +95,14 @@ export async function POST(request: Request) {
           maxAge: 60 * 60 * 8
         });
 
+        cookieStore.set(AUTH_TENANT_LABEL_COOKIE_NAME, body.tenantSlug, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: isSecure,
+          path: "/",
+          maxAge: 60 * 60 * 8
+        });
+
         return NextResponse.json({
           success: true,
           user: {
@@ -118,6 +130,20 @@ export async function POST(request: Request) {
 
       session = decodeJwtPayload(token);
 
+      if (!session.name) {
+        token = createGatewayToken({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          role: session.role,
+          allowedSolutions: session.allowedSolutions,
+          email: session.email,
+          name: body.email,
+          tenantName: session.tenantName ?? body.tenantSlug,
+          exp: session.exp
+        });
+        session = decodeJwtPayload(token);
+      }
+
       if (session?.email && session?.tenantId) {
         await syncLocalUserFromLogin({
           email: session.email,
@@ -128,6 +154,14 @@ export async function POST(request: Request) {
       }
 
       cookieStore.set(AUTH_TOKEN_COOKIE_NAME, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: isSecure,
+        path: "/",
+        maxAge: typeof session?.exp === "number" ? Math.max(session.exp - Math.floor(Date.now() / 1000), 0) : 60 * 60 * 8
+      });
+
+      cookieStore.set(AUTH_TENANT_LABEL_COOKIE_NAME, session?.tenantName ?? body.tenantSlug, {
         httpOnly: true,
         sameSite: "lax",
         secure: isSecure,

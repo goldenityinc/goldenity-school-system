@@ -2,6 +2,8 @@ import prisma from "../prisma";
 import { cookies } from "next/headers";
 import { AUTH_TOKEN_COOKIE_NAME } from "../api/auth";
 
+export const AUTH_TENANT_LABEL_COOKIE_NAME = "goldenity_school_tenant_label";
+
 export type JwtGatewaySession = {
   userId: string;
   tenantId: string;
@@ -9,6 +11,7 @@ export type JwtGatewaySession = {
   allowedSolutions: string[];
   email?: string;
   name?: string;
+  tenantName?: string;
   image?: string | null;
   profilePhotoUrl?: string | null;
   tenantLogoUrl?: string | null;
@@ -25,7 +28,12 @@ type JwtPayloadRaw = {
   tenant_id?: string;
   tenant?: {
     id?: string;
+    name?: string;
   };
+  tenantName?: string;
+  tenant_name?: string;
+  companyName?: string;
+  company_name?: string;
   role?: string;
   userRole?: string;
   roles?: string[];
@@ -95,6 +103,13 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
     normalizeStringArray(payload.solutions)
   ];
   const allowedSolutions = allowedSolutionsCandidates.find((items) => items.length > 0) ?? [];
+  const tenantName =
+    payload.tenantName ??
+    payload.tenant_name ??
+    payload.companyName ??
+    payload.company_name ??
+    payload.tenant?.name ??
+    undefined;
 
   if (!userId || !tenantId) {
     throw new Error("Payload JWT tidak lengkap.");
@@ -107,6 +122,7 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
     allowedSolutions,
     email: payload.email,
     name: payload.name ?? payload.fullName ?? payload.username ?? payload.email ?? undefined,
+    tenantName,
     exp: payload.exp
   };
 }
@@ -114,6 +130,7 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
 export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_TOKEN_COOKIE_NAME)?.value;
+  const tenantLabelFromCookie = cookieStore.get(AUTH_TENANT_LABEL_COOKIE_NAME)?.value;
 
   if (!token) {
     return null;
@@ -160,6 +177,7 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
     return {
       ...session,
       name: localUser?.name ?? session.name,
+      tenantName: session.tenantName ?? tenantLabelFromCookie ?? undefined,
       image: localUser?.profilePhotoUrl ?? session.image ?? null,
       profilePhotoUrl: localUser?.profilePhotoUrl ?? session.profilePhotoUrl ?? null,
       tenantLogoUrl: tenantBranding?.logoUrl ?? session.tenantLogoUrl ?? null

@@ -12,7 +12,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Ikhtisar", href: "/" },
+  { label: "Dashboard", href: "/" },
   { label: "Murid", href: "/students" },
   { label: "Akademik", href: "/academics", requiredModule: "ACADEMICS" },
   { label: "Tagihan", href: "/billing", requiredModule: "FINANCE" },
@@ -37,6 +37,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       allowedSolutions?: string[];
       profilePhotoUrl?: string | null;
       tenantLogoUrl?: string | null;
+      tenantName?: string;
     };
   } | null>(null);
 
@@ -69,6 +70,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           allowedSolutions?: string[];
           profilePhotoUrl?: string | null;
           tenantLogoUrl?: string | null;
+          tenantName?: string;
         };
       };
 
@@ -78,7 +80,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           name: payload.session?.name,
           allowedSolutions: payload.session?.allowedSolutions,
           profilePhotoUrl: payload.session?.profilePhotoUrl ?? null,
-          tenantLogoUrl: payload.session?.tenantLogoUrl ?? null
+          tenantLogoUrl: payload.session?.tenantLogoUrl ?? null,
+          tenantName: payload.session?.tenantName
         }
       });
     }
@@ -96,6 +99,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const userRole = session?.user?.role ?? "TEACHER";
   const userName = session?.user?.name ?? "Pengguna";
+  const tenantName = session?.user?.tenantName ?? "Tenant";
   const userPhotoUrl = session?.user?.profilePhotoUrl ?? null;
   const tenantLogoUrl = session?.user?.tenantLogoUrl ?? null;
   const activeModules = session?.user?.allowedSolutions ?? [];
@@ -128,7 +132,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <p className="text-sm font-semibold">EduCore</p>
-              <p className="text-xs text-slate-400">{roleLabel(userRole)}</p>
+              <p className="text-xs text-slate-400">{tenantName}</p>
             </div>
           </div>
           <nav aria-label="Primary" className="flex-1 space-y-1 p-3 text-sm">

@@ -79,6 +79,7 @@ export default function NewStudentWizardPage() {
 
   function updateField<K extends keyof StudentWizardFormState>(key: K, value: StudentWizardFormState[K]) {
     setFormData((prev) => ({ ...prev, [key]: value }));
+    setErrorMessage(null);
     if (key === "name" || key === "nis") {
       setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
     }
@@ -104,10 +105,12 @@ export default function NewStudentWizardPage() {
       return;
     }
 
+    setErrorMessage(null);
     setCurrentStep((prev) => Math.min(prev + 1, 3));
   }
 
   function handleBack() {
+    setErrorMessage(null);
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   }
 
