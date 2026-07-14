@@ -122,32 +122,39 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
   try {
     const session = decodeJwtPayload(token);
 
-    const localUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ id: session.userId }, { email: session.email ?? undefined }]
-      },
-      select: {
-        name: true,
-        profilePhotoUrl: true
-      }
-    });
-
-    const tenantBranding = session.tenantId
-      ? await prisma.tenantBranding.findUnique({
-          where: {
-            tenantId: session.tenantId
-          },
-          select: {
-            logoUrl: true
-          }
-        })
-      : null;
-
     if (typeof session.exp === "number") {
       const nowInSeconds = Math.floor(Date.now() / 1000);
       if (session.exp <= nowInSeconds) {
         return null;
       }
+    }
+
+    let localUser: { name: string; profilePhotoUrl: string | null } | null = null;
+    let tenantBranding: { logoUrl: string | null } | null = null;
+
+    try {
+      localUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ id: session.userId }, { email: session.email ?? undefined }]
+        },
+        select: {
+          name: true,
+          profilePhotoUrl: true
+        }
+      });
+
+      tenantBranding = session.tenantId
+        ? await prisma.tenantBranding.findUnique({
+            where: {
+              tenantId: session.tenantId
+            },
+            select: {
+              logoUrl: true
+            }
+          })
+        : null;
+    } catch (error) {
+      console.error("SESSION_PROFILE_ENRICHMENT_SKIPPED", error);
     }
 
     return {

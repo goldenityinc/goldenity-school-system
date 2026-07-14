@@ -19,26 +19,30 @@ async function syncLocalUserFromLogin(params: {
 }) {
   const hashedPassword = await bcrypt.hash(params.password, 10);
 
-  await prisma.user.upsert({
-    where: {
-      email: params.email
-    },
-    update: {
-      name: params.session.name ?? params.email,
-      password: hashedPassword,
-      role: params.session.role,
-      tenantId: params.session.tenantId,
-      tenantSlug: params.tenantSlug?.trim() || null
-    },
-    create: {
-      name: params.session.name ?? params.email,
-      email: params.email,
-      password: hashedPassword,
-      role: params.session.role,
-      tenantId: params.session.tenantId,
-      tenantSlug: params.tenantSlug?.trim() || null
-    }
-  });
+  try {
+    await prisma.user.upsert({
+      where: {
+        email: params.email
+      },
+      update: {
+        name: params.session.name ?? params.email,
+        password: hashedPassword,
+        role: params.session.role,
+        tenantId: params.session.tenantId,
+        tenantSlug: params.tenantSlug?.trim() || null
+      },
+      create: {
+        name: params.session.name ?? params.email,
+        email: params.email,
+        password: hashedPassword,
+        role: params.session.role,
+        tenantId: params.session.tenantId,
+        tenantSlug: params.tenantSlug?.trim() || null
+      }
+    });
+  } catch (error) {
+    console.error("LOCAL_USER_SYNC_SKIPPED", error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -52,12 +56,18 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const isSecure = process.env.NODE_ENV === "production";
 
-    const localUser = await prisma.user.findFirst({
-      where: {
-        email: body.email,
-        OR: [{ tenantSlug: body.tenantSlug }, { tenantId: body.tenantSlug }]
-      }
-    });
+    let localUser: Awaited<ReturnType<typeof prisma.user.findFirst>> | null = null;
+
+    try {
+      localUser = await prisma.user.findFirst({
+        where: {
+          email: body.email,
+          OR: [{ tenantSlug: body.tenantSlug }, { tenantId: body.tenantSlug }]
+        }
+      });
+    } catch (error) {
+      console.error("LOCAL_USER_LOOKUP_SKIPPED", error);
+    }
 
     if (localUser) {
       const isPasswordValid = await bcrypt.compare(body.password, localUser.password);
