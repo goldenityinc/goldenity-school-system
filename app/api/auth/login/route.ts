@@ -6,19 +6,21 @@ import { decodeJwtPayload } from "../../../../lib/utils/jwt";
 type LoginBody = {
   email?: string;
   password?: string;
+  tenantSlug?: string;
 };
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as LoginBody;
 
-    if (!body.email || !body.password) {
-      return NextResponse.json({ message: "Email dan password wajib diisi." }, { status: 400 });
+    if (!body.tenantSlug || !body.email || !body.password) {
+      return NextResponse.json({ message: "Tenant slug, username, dan password wajib diisi." }, { status: 400 });
     }
 
     const token = await loginViaAdminCore({
       email: body.email,
       password: body.password,
+      tenantSlug: body.tenantSlug,
       solution: "SCHOOL_ERP"
     });
 

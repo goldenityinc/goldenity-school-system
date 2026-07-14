@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [tenantSlug, setTenantSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +46,7 @@ export default function LoginPage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ tenantSlug, email, password })
     });
 
     if (!response.ok) {
@@ -69,8 +70,25 @@ export default function LoginPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
           <div>
+            <label htmlFor="tenantSlug" className="mb-1 block text-sm font-medium text-slate-700">
+              Tenant Slug
+            </label>
+            <input
+              id="tenantSlug"
+              name="tenantSlug"
+              type="text"
+              value={tenantSlug}
+              onChange={(event) => setTenantSlug(event.target.value)}
+              className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
+              placeholder="Masukkan tenant slug"
+              autoComplete="off"
+              required
+            />
+          </div>
+
+          <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-              Username / Email
+              Username
             </label>
             <input
               id="email"
@@ -79,7 +97,7 @@ export default function LoginPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="Masukkan username atau email"
+              placeholder="Masukkan username"
               autoComplete="off"
               required
             />

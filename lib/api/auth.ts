@@ -15,6 +15,7 @@ export class AdminCoreAuthError extends Error {
 type AdminCoreLoginPayload = {
   email: string;
   password: string;
+  tenantSlug?: string;
   solution?: string;
 };
 
@@ -71,7 +72,7 @@ function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {
 
 export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise<string> {
   const baseUrl = resolveAdminCoreBaseUrl();
-  const tenantSlug = process.env.CENTRAL_COMMAND_TENANT_SLUG || process.env.NEXT_PUBLIC_TENANT_SLUG || undefined;
+  const tenantSlug = payload.tenantSlug?.trim() || process.env.CENTRAL_COMMAND_TENANT_SLUG || process.env.NEXT_PUBLIC_TENANT_SLUG || undefined;
   const loginIdentifier = payload.email.trim();
   const loginPayload = {
     // Admin Core login contract expects `username`; keep `email` for backward compatibility.
