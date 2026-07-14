@@ -1,5 +1,17 @@
 export const AUTH_TOKEN_COOKIE_NAME = "goldenity_school_auth_token";
 
+export class AdminCoreAuthError extends Error {
+  status: number;
+  details: unknown;
+
+  constructor(message: string, status: number, details: unknown = null) {
+    super(message);
+    this.name = "AdminCoreAuthError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
 type AdminCoreLoginPayload = {
   email: string;
   password: string;
@@ -81,19 +93,30 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
     let errorData: unknown = null;
 
     try {
-      const errorJson = (await response.json()) as { message?: string };
+      const errorJson = (await response.json()) as { message?: string; error?: string; details?: unknown };
       errorData = errorJson;
       console.error("LOGIN FAILED FROM BACKEND:", errorData);
 
       if (typeof errorJson.message === "string" && errorJson.message.trim().length > 0) {
         message = errorJson.message;
+      } else if (typeof errorJson.error === "string" && errorJson.error.trim().length > 0) {
+        message = errorJson.error;
       }
     } catch {
-      console.error("LOGIN FAILED FROM BACKEND:", { status: response.status, message: "Non-JSON error response" });
-      // Use fallback message when backend body is not JSON.
+      const textBody = await response.text().catch(() => "");
+      errorData = textBody || null;
+      console.error("LOGIN FAILED FROM BACKEND:", {
+        status: response.status,
+        message: "Non-JSON error response",
+        body: textBody
+      });
+
+      if (textBody.trim().length > 0) {
+        message = textBody;
+      }
     }
 
-    throw new Error(message);
+    throw new AdminCoreAuthError(message, response.status, errorData);
   }
 
   const data = (await response.json()) as AdminCoreLoginResponse;

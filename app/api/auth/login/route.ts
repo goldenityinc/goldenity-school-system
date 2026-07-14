@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AUTH_TOKEN_COOKIE_NAME, loginViaAdminCore } from "../../../../lib/api/auth";
+import { AUTH_TOKEN_COOKIE_NAME, AdminCoreAuthError, loginViaAdminCore } from "../../../../lib/api/auth";
 import { decodeJwtPayload } from "../../../../lib/utils/jwt";
 
 type LoginBody = {
@@ -51,7 +51,18 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
+    if (error instanceof AdminCoreAuthError) {
+      return NextResponse.json(
+        {
+          message: error.message,
+          details: error.details,
+          source: "admin-core"
+        },
+        { status: error.status }
+      );
+    }
+
     const message = error instanceof Error ? error.message : "Login gagal.";
-    return NextResponse.json({ message }, { status: 401 });
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

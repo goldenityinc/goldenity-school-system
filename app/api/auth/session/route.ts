@@ -5,7 +5,7 @@ export async function GET() {
   const session = await getCurrentSession();
 
   if (!session) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    return NextResponse.json({ authenticated: false }, { status: 200 });
   }
 
   return NextResponse.json({
