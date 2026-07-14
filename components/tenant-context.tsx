@@ -14,17 +14,27 @@ type TenantContextValue = {
   activeTenantLabel: string;
 };
 
-const tenantOptions: TenantOption[] = [
-  { label: "SD Goldenity", value: "tenant-sd-01" },
-  { label: "SMP Goldenity", value: "tenant-smp-02" }
-];
-
 const TenantContext = createContext<TenantContextValue | null>(null);
 
-export function TenantProvider({ children }: { children: React.ReactNode }) {
-  const [selectedTenant, setSelectedTenant] = useState("tenant-sd-01");
+export function TenantProvider({
+  children,
+  initialTenantId
+}: {
+  children: React.ReactNode;
+  initialTenantId?: string | null;
+}) {
+  const [selectedTenant, setSelectedTenant] = useState(initialTenantId ?? "");
 
   const value = useMemo(() => {
+    const tenantOptions: TenantOption[] = selectedTenant
+      ? [
+          {
+            label: "Tenant Aktif",
+            value: selectedTenant
+          }
+        ]
+      : [];
+
     const activeTenantLabel = tenantOptions.find((tenant) => tenant.value === selectedTenant)?.label ?? "Tenant";
 
     return {

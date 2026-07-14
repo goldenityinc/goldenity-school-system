@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { DashboardShell } from "../components/dashboard-shell";
 import { AuthSessionProvider } from "../components/session-provider";
 import { TenantProvider } from "../components/tenant-context";
+import { getCurrentSession } from "../lib/utils/jwt";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -20,12 +21,14 @@ export const metadata: Metadata = {
   description: "Responsive ERP design system dashboard"
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const session = await getCurrentSession();
+
   return (
     <html lang="en">
       <body className={`${plusJakarta.variable} ${jetbrainsMono.variable} bg-slate-50 text-slate-900`}>
         <AuthSessionProvider>
-          <TenantProvider>
+          <TenantProvider initialTenantId={session?.tenantId ?? null}>
             <DashboardShell>{children}</DashboardShell>
           </TenantProvider>
         </AuthSessionProvider>
