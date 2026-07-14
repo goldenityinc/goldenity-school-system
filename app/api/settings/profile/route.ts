@@ -12,6 +12,11 @@ type SettingsPayload = {
   tenantLogoUrl?: string | null;
 };
 
+function buildFallbackLocalEmail(userId: string) {
+  const safeId = userId.replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase() || "user";
+  return `${safeId}@local.goldenity`;
+}
+
 async function getLocalUser(sessionUserId: string, email?: string) {
   return prisma.user.findFirst({
     where: {
@@ -174,23 +179,28 @@ export async function PUT(request: Request) {
   }
 
   if (!user) {
-    if (!session.email) {
-      return NextResponse.json({ message: "Akun lokal tidak ditemukan dan email session kosong. Silakan login ulang." }, { status: 400 });
-    }
-
     try {
+      const localEmail = session.email?.trim() || buildFallbackLocalEmail(session.userId);
       const generatedPassword = await bcrypt.hash(`local-seed:${session.userId}:${Date.now()}`, 10);
 
-      user = await prisma.user.create({
+      user = await prisma.user.upsert({
+        where: {
+          id: session.userId
+        },
         data: {
-          id: session.userId,
-          name: session.name?.trim() || session.email,
-          email: session.email,
+          name: session.name?.trim() || session.email || "Pengguna",
+          email: localEmail,
           password: generatedPassword,
           role: session.role,
           tenantId: session.tenantId,
           ...(canWriteTenantSlug ? { tenantSlug: session.tenantName ?? null } : {}),
           ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: null } : {})
+        },
+        update: {
+          name: session.name?.trim() || session.email || "Pengguna",
+          role: session.role,
+          tenantId: session.tenantId,
+          ...(canWriteTenantSlug ? { tenantSlug: session.tenantName ?? null } : {})
         },
         select: {
           id: true,
