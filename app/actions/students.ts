@@ -177,6 +177,14 @@ export async function getStudentById(tenantId: string, studentId: string) {
 }
 
 export async function createStudent(tenantId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
+  if (!process.env.DATABASE_URL) {
+    return {
+      success: false,
+      errors: {},
+      message: "Konfigurasi database belum siap (DATABASE_URL belum di-set)."
+    };
+  }
+
   if (!tenantId.trim()) {
     return {
       success: false,
@@ -230,6 +238,14 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
     revalidatePath("/students");
     return { success: true, id: createdStudent.id };
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return {
+        success: false,
+        errors: {},
+        message: "Koneksi database gagal. Periksa DATABASE_URL dan status server database."
+      };
+    }
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         return {
