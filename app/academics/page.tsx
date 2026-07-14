@@ -343,7 +343,7 @@ export default function AcademicsPage() {
         }
 
         if (!result) {
-          setClassDetailError("Kelas tidak ditemukan untuk tenant aktif.");
+          setClassDetailError("Kelas tidak ditemukan.");
           setSelectedClassDetail(null);
           return;
         }
@@ -485,9 +485,7 @@ export default function AcademicsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Akademik</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Kelola guru, mata pelajaran, dan kelas untuk tenant aktif: {activeTenantLabel} ({selectedTenant})
-          </p>
+          <p className="mt-1 text-sm text-slate-600">Kelola guru, mata pelajaran, dan kelas sekolah dari satu tempat.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href="/academics/classrooms"

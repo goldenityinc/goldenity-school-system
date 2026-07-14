@@ -76,13 +76,13 @@ export function TenantProvider({
     const tenantOptions: TenantOption[] = selectedTenant
       ? [
           {
-            label: "Tenant Aktif",
+            label: "Sekolah",
             value: selectedTenant
           }
         ]
       : [];
 
-    const activeTenantLabel = tenantOptions.find((tenant) => tenant.value === selectedTenant)?.label ?? "Tenant";
+    const activeTenantLabel = tenantOptions.find((tenant) => tenant.value === selectedTenant)?.label ?? "Sekolah";
 
     return {
       selectedTenant,

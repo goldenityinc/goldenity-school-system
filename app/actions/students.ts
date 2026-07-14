@@ -16,154 +16,164 @@ type CreateStudentResult =
 export async function getStudents(tenantId: string, query?: string) {
   const trimmedQuery = query?.trim();
 
-  const students = await prisma.student.findMany({
-    where: {
-      tenantId,
-      ...(trimmedQuery
-        ? {
-            OR: [
-              {
-                fullName: {
-                  contains: trimmedQuery,
-                  mode: "insensitive"
+  try {
+    const students = await prisma.student.findMany({
+      where: {
+        tenantId,
+        ...(trimmedQuery
+          ? {
+              OR: [
+                {
+                  fullName: {
+                    contains: trimmedQuery,
+                    mode: "insensitive"
+                  }
+                },
+                {
+                  studentNumber: {
+                    contains: trimmedQuery,
+                    mode: "insensitive"
+                  }
                 }
-              },
-              {
-                studentNumber: {
-                  contains: trimmedQuery,
-                  mode: "insensitive"
-                }
+              ]
+            }
+          : {})
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        enrollments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: {
+            courseOffering: {
+              include: {
+                course: true
               }
-            ]
-          }
-        : {})
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      enrollments: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        include: {
-          courseOffering: {
-            include: {
-              course: true
             }
           }
-        }
-      },
-      grades: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          courseOffering: {
-            select: {
-              id: true
+        },
+        grades: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            courseOffering: {
+              select: {
+                id: true
+              }
             }
           }
         }
       }
-    }
-  });
+    });
 
-  return students.map((student) => ({
-    ...(() => {
-      const latestEnrollment = student.enrollments[0];
-      const relatedGrade = latestEnrollment
-        ? student.grades.find((grade) => grade.courseOfferingId === latestEnrollment.courseOfferingId) ?? student.grades[0]
-        : student.grades[0];
+    return students.map((student) => ({
+      ...(() => {
+        const latestEnrollment = student.enrollments[0];
+        const relatedGrade = latestEnrollment
+          ? student.grades.find((grade) => grade.courseOfferingId === latestEnrollment.courseOfferingId) ?? student.grades[0]
+          : student.grades[0];
 
-      return {
-        id: student.id,
-        nis: student.studentNumber,
-        name: student.fullName,
-        registrationDate: student.createdAt.toISOString(),
-        latestEnrollment: latestEnrollment
-          ? {
-              status: latestEnrollment.status,
-              courseName: latestEnrollment.courseOffering.course.name,
-              gradeLetter: relatedGrade?.type ?? null,
-              gradeScore: relatedGrade ? String(relatedGrade.score) : null
-            }
-          : null
-      };
-    })()
-  }));
+        return {
+          id: student.id,
+          nis: student.studentNumber,
+          name: student.fullName,
+          registrationDate: student.createdAt.toISOString(),
+          latestEnrollment: latestEnrollment
+            ? {
+                status: latestEnrollment.status,
+                courseName: latestEnrollment.courseOffering.course.name,
+                gradeLetter: relatedGrade?.type ?? null,
+                gradeScore: relatedGrade ? String(relatedGrade.score) : null
+              }
+            : null
+        };
+      })()
+    }));
+  } catch (error) {
+    console.error("[students.getStudents]", error);
+    return [];
+  }
 }
 
 export async function getStudentById(tenantId: string, studentId: string) {
-  const student = await prisma.student.findFirst({
-    where: {
-      id: studentId,
-      tenantId
-    },
-    include: {
-      classroom: {
-        select: {
-          id: true,
-          name: true,
-          academicYear: true,
-          semester: true
-        }
+  try {
+    const student = await prisma.student.findFirst({
+      where: {
+        id: studentId,
+        tenantId
       },
-      enrollments: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          courseOffering: {
-            include: {
-              course: true,
-              lecturer: true
+      include: {
+        classroom: {
+          select: {
+            id: true,
+            name: true,
+            academicYear: true,
+            semester: true
+          }
+        },
+        enrollments: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            courseOffering: {
+              include: {
+                course: true,
+                lecturer: true
+              }
             }
           }
         }
       }
-    }
-  });
+    });
 
-  if (!student) {
+    if (!student) {
+      return null;
+    }
+
+    return {
+      id: student.id,
+      nis: student.studentNumber,
+      name: student.fullName,
+      gender: student.gender,
+      placeOfBirth: student.placeOfBirth,
+      dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
+      address: student.address,
+      fatherName: student.fatherName,
+      motherName: student.motherName,
+      parentPhone: student.parentPhone,
+      parentJob: student.parentJob,
+      previousSchool: student.previousSchool,
+      classroom: student.classroom
+        ? {
+            id: student.classroom.id,
+            name: student.classroom.name,
+            academicYear: student.classroom.academicYear,
+            semester: student.classroom.semester
+          }
+        : null,
+      enrollments: student.enrollments.map((enrollment) => ({
+        id: enrollment.id,
+        status: enrollment.status,
+        dayOfWeek: enrollment.courseOffering.dayOfWeek,
+        startTime: enrollment.courseOffering.startTime,
+        endTime: enrollment.courseOffering.endTime,
+        room: enrollment.courseOffering.room,
+        course: {
+          id: enrollment.courseOffering.course.id,
+          code: enrollment.courseOffering.course.code,
+          name: enrollment.courseOffering.course.name
+        },
+        lecturer: enrollment.courseOffering.lecturer
+          ? {
+              id: enrollment.courseOffering.lecturer.id,
+              name: enrollment.courseOffering.lecturer.fullName,
+              nip: enrollment.courseOffering.lecturer.staffId
+            }
+          : null
+      }))
+    };
+  } catch (error) {
+    console.error("[students.getStudentById]", error);
     return null;
   }
-
-  return {
-    id: student.id,
-    nis: student.studentNumber,
-    name: student.fullName,
-    gender: student.gender,
-    placeOfBirth: student.placeOfBirth,
-    dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
-    address: student.address,
-    fatherName: student.fatherName,
-    motherName: student.motherName,
-    parentPhone: student.parentPhone,
-    parentJob: student.parentJob,
-    previousSchool: student.previousSchool,
-    classroom: student.classroom
-      ? {
-          id: student.classroom.id,
-          name: student.classroom.name,
-          academicYear: student.classroom.academicYear,
-          semester: student.classroom.semester
-        }
-      : null,
-    enrollments: student.enrollments.map((enrollment) => ({
-      id: enrollment.id,
-      status: enrollment.status,
-      dayOfWeek: enrollment.courseOffering.dayOfWeek,
-      startTime: enrollment.courseOffering.startTime,
-      endTime: enrollment.courseOffering.endTime,
-      room: enrollment.courseOffering.room,
-      course: {
-        id: enrollment.courseOffering.course.id,
-        code: enrollment.courseOffering.course.code,
-        name: enrollment.courseOffering.course.name
-      },
-      lecturer: enrollment.courseOffering.lecturer
-        ? {
-            id: enrollment.courseOffering.lecturer.id,
-            name: enrollment.courseOffering.lecturer.fullName,
-            nip: enrollment.courseOffering.lecturer.staffId
-          }
-        : null
-    }))
-  };
 }
 
 export async function createStudent(tenantId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
@@ -231,27 +241,33 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
         };
       }
 
-      if (error.code === "P2022") {
-        try {
-          const fallbackStudent = await prisma.student.create({
-            data: baseStudentData
-          });
+      try {
+        const fallbackStudent = await prisma.student.create({
+          data: baseStudentData
+        });
 
-          revalidatePath("/students");
-          return { success: true, id: fallbackStudent.id };
-        } catch {
-          return {
-            success: false,
-            errors: {},
-            message: "Skema database belum sinkron. Jalankan db push/migrate di environment production."
-          };
-        }
+        revalidatePath("/students");
+        return { success: true, id: fallbackStudent.id };
+      } catch (fallbackError) {
+        const fallbackCode =
+          fallbackError instanceof Prisma.PrismaClientKnownRequestError ? fallbackError.code : null;
+
+        return {
+          success: false,
+          errors: {},
+          message:
+            fallbackCode === "P2002"
+              ? "NIS sudah terdaftar untuk tenant ini."
+              : fallbackCode
+                ? `Skema database belum sinkron atau ada constraint yang ditolak (kode: ${fallbackCode}).`
+                : "Skema database belum sinkron atau ada constraint yang ditolak saat menyimpan murid."
+        };
       }
 
       return {
         success: false,
         errors: {},
-        message: `Gagal menyimpan data murid (kode: ${error.code}).`
+        message: "Gagal menyimpan data murid."
       };
     }
 

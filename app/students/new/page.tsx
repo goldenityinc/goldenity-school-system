@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createStudent } from "../../actions/students";
 import { useTenant } from "../../../components/tenant-context";
-import { StudentSchema, type CreateStudentInput } from "../../../lib/student-schema";
+import type { CreateStudentInput } from "../../../lib/student-schema";
 
 type StudentWizardFormState = {
   nis: string;
@@ -59,7 +59,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
             key={step.id}
             className={`rounded-xl border p-4 ${isActive ? "border-slate-900 bg-slate-900 text-white" : isDone ? "border-green-200 bg-green-50 text-green-800" : "border-slate-200 bg-slate-50 text-slate-500"}`}
           >
-            <p className="text-xs uppercase tracking-wide">Step {step.id}</p>
+            <p className="text-xs uppercase tracking-wide">Langkah {step.id}</p>
             <p className="mt-1 text-sm font-semibold">{step.label}</p>
           </li>
         );
@@ -70,7 +70,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 
 export default function NewStudentWizardPage() {
   const router = useRouter();
-  const { activeTenantLabel, selectedTenant } = useTenant();
+  const { selectedTenant } = useTenant();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<StudentWizardFormState>(initialFormState);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -167,11 +167,8 @@ export default function NewStudentWizardPage() {
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="inline-flex rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
-            Tenant Aktif: {activeTenantLabel}
-          </p>
           <h1 className="mt-3 text-2xl font-bold text-slate-900">Tambah Murid Baru</h1>
-          <p className="mt-1 text-sm text-slate-600">Wizard multi-step untuk tenant {selectedTenant}.</p>
+          <p className="mt-1 text-sm text-slate-600">Wizard multi-langkah untuk data murid.</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
           {stepTitle}
@@ -187,17 +184,17 @@ export default function NewStudentWizardPage() {
       <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
         {currentStep === 1 ? (
           <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
-            <legend className="px-1 text-sm font-semibold text-slate-900">Step 1: Data Pribadi</legend>
+            <legend className="px-1 text-sm font-semibold text-slate-900">Langkah 1: Data Pribadi</legend>
             <div className="grid gap-4 md:grid-cols-2">
-              <Input label="NIS" value={formData.nis} onChange={(value) => updateField("nis", value)} required />
+              <Input label="NIS" value={formData.nis} onChange={(value) => updateField("nis", value.replace(/\D/g, ""))} required inputMode="numeric" pattern="[0-9]*" />
               {fieldErrors.nis ? <p className="-mt-2 text-xs text-red-600 md:col-span-2">{fieldErrors.nis}</p> : null}
-              <Input label="Full Name" value={formData.name} onChange={(value) => updateField("name", value)} required />
+              <Input label="Nama Lengkap" value={formData.name} onChange={(value) => updateField("name", value)} required />
               {fieldErrors.name ? <p className="-mt-2 text-xs text-red-600 md:col-span-2">{fieldErrors.name}</p> : null}
-              <SelectInput label="Gender" value={formData.gender} onChange={(value) => updateField("gender", value)} options={["", "Laki-laki", "Perempuan"]} />
-              <Input label="Place of Birth" value={formData.placeOfBirth} onChange={(value) => updateField("placeOfBirth", value)} />
-              <Input label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(value) => updateField("dateOfBirth", value)} />
+              <SelectInput label="Jenis Kelamin" value={formData.gender} onChange={(value) => updateField("gender", value)} options={["", "Laki-laki", "Perempuan"]} />
+              <Input label="Tempat Lahir" value={formData.placeOfBirth} onChange={(value) => updateField("placeOfBirth", value)} />
+              <Input label="Tanggal Lahir" type="date" value={formData.dateOfBirth} onChange={(value) => updateField("dateOfBirth", value)} lang="id" />
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Address</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Alamat</label>
                 <textarea
                   value={formData.address}
                   onChange={(event) => updateField("address", event.target.value)}
@@ -210,23 +207,23 @@ export default function NewStudentWizardPage() {
 
         {currentStep === 2 ? (
           <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
-            <legend className="px-1 text-sm font-semibold text-slate-900">Step 2: Data Orang Tua / Wali</legend>
+            <legend className="px-1 text-sm font-semibold text-slate-900">Langkah 2: Data Orang Tua / Wali</legend>
             <div className="grid gap-4 md:grid-cols-2">
-              <Input label="Father Name" value={formData.fatherName} onChange={(value) => updateField("fatherName", value)} />
-              <Input label="Mother Name" value={formData.motherName} onChange={(value) => updateField("motherName", value)} />
-              <Input label="Parent Phone" value={formData.parentPhone} onChange={(value) => updateField("parentPhone", value)} />
-              <Input label="Parent Job" value={formData.parentJob} onChange={(value) => updateField("parentJob", value)} />
+              <Input label="Nama Ayah" value={formData.fatherName} onChange={(value) => updateField("fatherName", value)} />
+              <Input label="Nama Ibu" value={formData.motherName} onChange={(value) => updateField("motherName", value)} />
+              <Input label="Nomor Telepon" value={formData.parentPhone} onChange={(value) => updateField("parentPhone", value.replace(/[^\d+]/g, ""))} inputMode="tel" placeholder="+62812..." />
+              <Input label="Pekerjaan" value={formData.parentJob} onChange={(value) => updateField("parentJob", value)} />
             </div>
           </fieldset>
         ) : null}
 
         {currentStep === 3 ? (
           <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4">
-            <legend className="px-1 text-sm font-semibold text-slate-900">Step 3: Riwayat Akademik</legend>
+            <legend className="px-1 text-sm font-semibold text-slate-900">Langkah 3: Riwayat Akademik</legend>
             <div className="grid gap-4 md:grid-cols-2">
-              <Input label="Previous School" value={formData.previousSchool} onChange={(value) => updateField("previousSchool", value)} />
+              <Input label="Sekolah Sebelumnya" value={formData.previousSchool} onChange={(value) => updateField("previousSchool", value)} />
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Previous Report Card Summary / URL</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Ringkasan Rapor / URL</label>
                 <textarea
                   value={formData.previousReportCardSummary}
                   onChange={(event) => updateField("previousReportCardSummary", event.target.value)}
@@ -243,7 +240,7 @@ export default function NewStudentWizardPage() {
             onClick={() => router.push("/students")}
             className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
           >
-            Cancel
+            Batal
           </button>
 
           <div className="flex items-center gap-2">
@@ -253,7 +250,7 @@ export default function NewStudentWizardPage() {
               disabled={currentStep === 1 || isPending}
                 className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                ← Back
+                ← Kembali
             </button>
 
             {currentStep < 3 ? (
@@ -262,7 +259,7 @@ export default function NewStudentWizardPage() {
                 onClick={handleNext}
                 className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Next →
+                Lanjut →
               </button>
             ) : (
               <button
@@ -270,7 +267,7 @@ export default function NewStudentWizardPage() {
                 disabled={isPending}
                 className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? "Saving..." : "Submit"}
+                {isPending ? "Menyimpan..." : "Simpan"}
               </button>
             )}
           </div>
@@ -280,7 +277,7 @@ export default function NewStudentWizardPage() {
   );
 }
 
-function Input({ label, value, onChange, type = "text", required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
+function Input({ label, value, onChange, type = "text", required = false, inputMode, pattern, placeholder, lang }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; inputMode?: "search" | "email" | "none" | "decimal" | "text" | "tel" | "url" | "numeric"; pattern?: string; placeholder?: string; lang?: string }) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
@@ -289,6 +286,10 @@ function Input({ label, value, onChange, type = "text", required = false }: { la
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
+        inputMode={inputMode}
+        pattern={pattern}
+        placeholder={placeholder}
+        lang={lang}
         className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
       />
     </div>

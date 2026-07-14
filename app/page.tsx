@@ -31,5 +31,5 @@ export default async function Home() {
     });
   }
 
-  return <DashboardOverview userName={session.name ?? "User"} userRole={session.role ?? "TEACHER"} metrics={metrics} />;
+  return <DashboardOverview userName={session.name ?? "Pengguna"} userRole={session.role ?? "TEACHER"} metrics={metrics} />;
 }

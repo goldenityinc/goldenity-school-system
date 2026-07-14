@@ -213,7 +213,7 @@ export default function StudentReportCardPage() {
     return (
       <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
         <h1 className="text-xl font-bold text-slate-900">Data Siswa Tidak Ditemukan</h1>
-        <p className="text-sm text-slate-600">Siswa yang Anda cari tidak tersedia pada tenant aktif.</p>
+        <p className="text-sm text-slate-600">Siswa yang Anda cari tidak tersedia.</p>
         <Link href="/students" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           Kembali ke daftar siswa
         </Link>
@@ -234,7 +234,7 @@ export default function StudentReportCardPage() {
             onClick={() => window.print()}
             className="inline-flex h-9 items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800"
           >
-            Print Rapor
+            Cetak Rapor
           </button>
           <Link href={`/students/${student.id}`} className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Kembali ke Profil

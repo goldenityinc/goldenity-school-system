@@ -89,14 +89,14 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-slate-900">Login Goldenity Campus</h1>
-          <p className="mt-2 text-sm text-slate-600">Masuk untuk mengakses dashboard ERP kampus.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Masuk ke EduCore</h1>
+          <p className="mt-2 text-sm text-slate-600">Masuk untuk mengakses dashboard sekolah.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
           <div>
             <label htmlFor="tenantSlug" className="mb-1 block text-sm font-medium text-slate-700">
-              Tenant Slug
+              Slug Tenant
             </label>
             <input
               id="tenantSlug"
@@ -105,7 +105,7 @@ export default function LoginPage() {
               value={tenantSlug}
               onChange={(event) => setTenantSlug(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="Masukkan tenant slug"
+              placeholder="Masukkan slug tenant"
               autoComplete="off"
               required
             />
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-              Username
+              Nama Pengguna
             </label>
             <input
               id="email"
@@ -122,7 +122,7 @@ export default function LoginPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="Masukkan username"
+              placeholder="Masukkan nama pengguna"
               autoComplete="off"
               required
             />
@@ -130,7 +130,7 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
-              Password
+              Kata Sandi
             </label>
             <input
               id="password"
@@ -139,7 +139,7 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="Masukkan password"
+              placeholder="Masukkan kata sandi"
               autoComplete="new-password"
               required
             />

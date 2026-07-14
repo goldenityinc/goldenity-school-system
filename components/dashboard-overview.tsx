@@ -36,7 +36,7 @@ function formatCurrencyIdr(value: number) {
 
 function roleSubtitle(role: string) {
   if (role === "SUPER_ADMIN") {
-    return "Pantau performa tenant dan ambil keputusan strategis dengan data real-time.";
+    return "Pantau performa seluruh tenant dan ambil keputusan strategis dengan data real-time.";
   }
 
   if (role === "TEACHER") {
@@ -117,7 +117,7 @@ export function DashboardOverview({ userName, userRole, metrics }: DashboardOver
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="pointer-events-none absolute -right-14 -top-20 h-48 w-48 rounded-full bg-gradient-to-br from-sky-200 to-cyan-100 blur-2xl" />
-        <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">Dashboard Overview</p>
+        <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">Ikhtisar Dashboard</p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">Selamat Datang, {userName}!</h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-600">{roleSubtitle(userRole)}</p>
       </section>
@@ -142,7 +142,7 @@ export function DashboardOverview({ userName, userRole, metrics }: DashboardOver
         <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">Tren Pemasukan 6 Bulan</h2>
-            <p className="text-xs text-slate-500">Data pitch visual</p>
+            <p className="text-xs text-slate-500">Visual data</p>
           </div>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">

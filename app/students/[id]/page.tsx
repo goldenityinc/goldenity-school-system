@@ -52,7 +52,7 @@ function formatDate(value: string | null) {
 
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
-    month: "long",
+    month: "2-digit",
     year: "numeric"
   }).format(new Date(value));
 }
@@ -142,7 +142,7 @@ export default function StudentDetailPage() {
     return (
       <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
         <h1 className="text-xl font-bold text-slate-900">Data Siswa Tidak Ditemukan</h1>
-        <p className="text-sm text-slate-600">Siswa yang Anda cari tidak tersedia pada tenant aktif.</p>
+        <p className="text-sm text-slate-600">Siswa yang Anda cari tidak tersedia.</p>
         <Link href="/students" className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           Kembali
         </Link>
@@ -173,18 +173,18 @@ export default function StudentDetailPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <article className="space-y-3 rounded-lg border border-slate-200 p-4">
           <h2 className="text-base font-semibold text-slate-900">Data Pribadi</h2>
-          <ItemRow label="Gender" value={student.gender} />
-          <ItemRow label="Tempat Lahir" value={student.placeOfBirth} />
-          <ItemRow label="Tanggal Lahir" value={formatDate(student.dateOfBirth)} />
-          <ItemRow label="Alamat" value={student.address} />
+            <ItemRow label="Jenis Kelamin" value={student.gender} />
+            <ItemRow label="Tempat Lahir" value={student.placeOfBirth} />
+            <ItemRow label="Tanggal Lahir" value={formatDate(student.dateOfBirth)} />
+            <ItemRow label="Alamat" value={student.address} />
         </article>
 
         <article className="space-y-3 rounded-lg border border-slate-200 p-4">
           <h2 className="text-base font-semibold text-slate-900">Data Orang Tua / Wali</h2>
-          <ItemRow label="Ayah" value={student.fatherName} />
-          <ItemRow label="Ibu" value={student.motherName} />
-          <ItemRow label="Telepon" value={student.parentPhone} />
-          <ItemRow label="Pekerjaan" value={student.parentJob} />
+            <ItemRow label="Ayah" value={student.fatherName} />
+            <ItemRow label="Ibu" value={student.motherName} />
+            <ItemRow label="Telepon" value={student.parentPhone} />
+            <ItemRow label="Pekerjaan" value={student.parentJob} />
         </article>
 
         <article className="space-y-3 rounded-lg border border-slate-200 p-4">

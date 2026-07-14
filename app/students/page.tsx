@@ -21,7 +21,7 @@ type StudentRow = {
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric"
   }).format(new Date(value));
 }
@@ -37,7 +37,7 @@ function TableSkeleton() {
 }
 
 export default function StudentsPage() {
-  const { activeTenantLabel, selectedTenant } = useTenant();
+  const { selectedTenant } = useTenant();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -114,15 +114,13 @@ export default function StudentsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Manajemen Murid</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Kelola data murid untuk tenant aktif: {activeTenantLabel} ({selectedTenant})
-            </p>
+            <p className="mt-1 text-sm text-slate-600">Kelola data murid sekolah dari satu tempat.</p>
           </div>
           <Link
             href="/students/new"
             className="inline-flex h-9 items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            + Add Student
+            + Tambah Murid
           </Link>
         </div>
 
@@ -133,7 +131,7 @@ export default function StudentsPage() {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Cari berdasarkan nama atau NIS..."
             className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
-            aria-label="Search students"
+            aria-label="Cari murid"
           />
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
             Total: <span className="font-semibold text-slate-900">{totalStudents}</span>
@@ -152,10 +150,10 @@ export default function StudentsPage() {
               <thead>
                 <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th className="border-b border-slate-200 px-3 py-2">NIS</th>
-                  <th className="border-b border-slate-200 px-3 py-2">Name</th>
-                  <th className="border-b border-slate-200 px-3 py-2">Registration Date</th>
-                  <th className="border-b border-slate-200 px-3 py-2">Latest Enrollment</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-right">Actions</th>
+                  <th className="border-b border-slate-200 px-3 py-2">Nama</th>
+                  <th className="border-b border-slate-200 px-3 py-2">Tanggal Daftar</th>
+                  <th className="border-b border-slate-200 px-3 py-2">Enrolmen Terakhir</th>
+                  <th className="border-b border-slate-200 px-3 py-2 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,7 +179,7 @@ export default function StudentsPage() {
                             <div className="font-medium text-slate-900">{student.latestEnrollment.courseName}</div>
                             <div className="text-xs text-slate-500">
                               {student.latestEnrollment.status}
-                              {student.latestEnrollment.gradeLetter ? ` • Grade ${student.latestEnrollment.gradeLetter}` : ""}
+                              {student.latestEnrollment.gradeLetter ? ` • Nilai ${student.latestEnrollment.gradeLetter}` : ""}
                             </div>
                           </div>
                         ) : (
@@ -203,7 +201,7 @@ export default function StudentsPage() {
                             onClick={() => handleDelete(student.id)}
                             disabled={isPending}
                           >
-                            Del
+                            Hapus
                           </button>
                         </div>
                       </td>

@@ -252,7 +252,7 @@ export default function GradesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Input Nilai</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Input nilai Tugas, UTS, dan UAS untuk tenant aktif: {activeTenantLabel} ({selectedTenant})
+            Input nilai Tugas, UTS, dan UAS untuk kelas sekolah.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

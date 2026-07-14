@@ -67,16 +67,16 @@ function StudentTable({ students }: { students: RecentStudent[] }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-soft" aria-labelledby="student-table-title">
       <div className="flex flex-wrap items-center justify-between gap-3 p-2">
-        <h3 id="student-table-title" className="text-base font-semibold text-slate-900">Recent Students</h3>
+        <h3 id="student-table-title" className="text-base font-semibold text-slate-900">Murid Terbaru</h3>
         <div className="flex flex-wrap items-center gap-2">
           <input
-            aria-label="Search students"
+            aria-label="Cari murid"
             type="search"
-            placeholder="Search students"
+            placeholder="Cari murid"
             className="h-9 rounded-md border border-slate-200 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
           />
-          <Button variant="outline" size="sm">Export</Button>
-          <Button variant="primary" size="sm">Add Student</Button>
+          <Button variant="outline" size="sm">Ekspor</Button>
+          <Button variant="primary" size="sm">Tambah Murid</Button>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -122,7 +122,7 @@ function StudentTable({ students }: { students: RecentStudent[] }) {
 }
 
 export function OverviewContent() {
-  const { selectedTenant, activeTenantLabel } = useTenant();
+  const { selectedTenant } = useTenant();
   const [stats, setStats] = useState<DashboardStats>({ totalStudents: 0, totalLecturers: 0, totalCourses: 0 });
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
 
@@ -156,12 +156,11 @@ export function OverviewContent() {
 
   const summaryStats: Stat[] = useMemo(
     () => [
-      { label: "Total Students", value: String(stats.totalStudents), delta: `Tenant ${activeTenantLabel}`, deltaTone: "positive" },
-      { label: "Total Lecturers", value: String(stats.totalLecturers), delta: "Teaching staff in tenant", deltaTone: "positive" },
-      { label: "Total Courses", value: String(stats.totalCourses), delta: "Active academic courses", deltaTone: "positive" },
-      { label: "Current Tenant", value: activeTenantLabel, delta: selectedTenant, deltaTone: "warning" }
+      { label: "Total Murid", value: String(stats.totalStudents), delta: "Data sekolah aktif", deltaTone: "positive" },
+      { label: "Total Guru", value: String(stats.totalLecturers), delta: "Tenaga pengajar aktif", deltaTone: "positive" },
+      { label: "Total Mapel", value: String(stats.totalCourses), delta: "Mata pelajaran aktif", deltaTone: "positive" }
     ],
-    [activeTenantLabel, selectedTenant, stats.totalCourses, stats.totalLecturers, stats.totalStudents]
+    [stats.totalCourses, stats.totalLecturers, stats.totalStudents]
   );
 
   return (
@@ -171,8 +170,8 @@ export function OverviewContent() {
           <p className="inline-flex w-fit rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
             Dashboard Operasional
           </p>
-          <h1 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">{activeTenantLabel}</h1>
-          <p className="max-w-2xl text-sm text-slate-500 sm:text-base">Pantau data operasional sekolah secara real-time untuk tenant aktif.</p>
+          <h1 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">Ikhtisar Sekolah</h1>
+          <p className="max-w-2xl text-sm text-slate-500 sm:text-base">Pantau data operasional sekolah secara real-time.</p>
         </div>
       </header>
 
@@ -185,29 +184,29 @@ export function OverviewContent() {
       <StudentTable students={recentStudents} />
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft" aria-labelledby="feature-flags-title">
-        <h3 id="feature-flags-title" className="text-base font-semibold text-slate-900">Feature Flags</h3>
-        <p className="mt-1 text-sm text-slate-500">Super-admin controls for tenant modules.</p>
+        <h3 id="feature-flags-title" className="text-base font-semibold text-slate-900">Fitur Tambahan</h3>
+        <p className="mt-1 text-sm text-slate-500">Pengaturan kemampuan tambahan untuk sekolah.</p>
         <div className="mt-4 space-y-3">
           <article className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
             <div>
-              <p className="font-semibold">Biometric Attendance</p>
-              <p className="text-xs text-slate-500">Enable fingerprint and face ID check-in</p>
+              <p className="font-semibold">Absensi Biometrik</p>
+              <p className="text-xs text-slate-500">Aktifkan absensi fingerprint dan face ID</p>
             </div>
-            <Badge variant="active">Enabled</Badge>
+            <Badge variant="active">Aktif</Badge>
           </article>
           <article className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
             <div>
-              <p className="font-semibold">LMS Integration</p>
-              <p className="text-xs text-slate-500">Connect with Moodle, Google Classroom or Canvas</p>
+              <p className="font-semibold">Integrasi LMS</p>
+              <p className="text-xs text-slate-500">Hubungkan dengan Moodle, Google Classroom, atau Canvas</p>
             </div>
-            <Badge variant="active">Enabled</Badge>
+            <Badge variant="active">Aktif</Badge>
           </article>
           <article className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
             <div>
-              <p className="font-semibold">Multi-Campus Mode</p>
-              <p className="text-xs text-slate-500">Manage multiple physical campuses per tenant</p>
+              <p className="font-semibold">Mode Multi-Cabang</p>
+              <p className="text-xs text-slate-500">Kelola banyak cabang fisik sekolah</p>
             </div>
-            <Badge variant="inactive">Disabled</Badge>
+            <Badge variant="inactive">Nonaktif</Badge>
           </article>
         </div>
       </section>

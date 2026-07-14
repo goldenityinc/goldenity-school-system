@@ -50,11 +50,24 @@ model User {
   password    String
   role        String   @default("TEACHER")
   tenantId    String?
+  tenantSlug  String?
+  profilePhotoUrl String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   lecturer    Lecturer?
   createdRegs StudentRegistration[] @relation("CreatedByUser")
+
+  @@index([tenantId])
+  @@index([tenantSlug])
+}
+
+model TenantBranding {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
 }

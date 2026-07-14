@@ -1,3 +1,4 @@
+import prisma from "../prisma";
 import { cookies } from "next/headers";
 import { AUTH_TOKEN_COOKIE_NAME } from "../api/auth";
 
@@ -8,6 +9,9 @@ export type JwtGatewaySession = {
   allowedSolutions: string[];
   email?: string;
   name?: string;
+  image?: string | null;
+  profilePhotoUrl?: string | null;
+  tenantLogoUrl?: string | null;
   exp?: number;
 };
 
@@ -15,6 +19,8 @@ type JwtPayloadRaw = {
   userId?: string;
   sub?: string;
   id?: string;
+  username?: string;
+  fullName?: string;
   tenantId?: string;
   tenant_id?: string;
   tenant?: {
@@ -53,6 +59,23 @@ function decodeBase64Url(input: string) {
   return Buffer.from(padded, "base64").toString("utf8");
 }
 
+function encodeBase64Url(input: string) {
+  return Buffer.from(input, "utf8")
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+export function createGatewayToken(payload: JwtPayloadRaw): string {
+  const header = {
+    alg: "none",
+    typ: "JWT"
+  };
+
+  return `${encodeBase64Url(JSON.stringify(header))}.${encodeBase64Url(JSON.stringify(payload))}.`;
+}
+
 export function decodeJwtPayload(token: string): JwtGatewaySession {
   const parts = token.split(".");
 
@@ -83,7 +106,7 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
     role: role ?? "TENANT_ADMIN",
     allowedSolutions,
     email: payload.email,
-    name: payload.name,
+    name: payload.name ?? payload.fullName ?? payload.username ?? payload.email ?? undefined,
     exp: payload.exp
   };
 }
@@ -99,6 +122,27 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
   try {
     const session = decodeJwtPayload(token);
 
+    const localUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ id: session.userId }, { email: session.email ?? undefined }]
+      },
+      select: {
+        name: true,
+        profilePhotoUrl: true
+      }
+    });
+
+    const tenantBranding = session.tenantId
+      ? await prisma.tenantBranding.findUnique({
+          where: {
+            tenantId: session.tenantId
+          },
+          select: {
+            logoUrl: true
+          }
+        })
+      : null;
+
     if (typeof session.exp === "number") {
       const nowInSeconds = Math.floor(Date.now() / 1000);
       if (session.exp <= nowInSeconds) {
@@ -106,7 +150,13 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
       }
     }
 
-    return session;
+    return {
+      ...session,
+      name: localUser?.name ?? session.name,
+      image: localUser?.profilePhotoUrl ?? session.image ?? null,
+      profilePhotoUrl: localUser?.profilePhotoUrl ?? session.profilePhotoUrl ?? null,
+      tenantLogoUrl: tenantBranding?.logoUrl ?? session.tenantLogoUrl ?? null
+    };
   } catch {
     return null;
   }

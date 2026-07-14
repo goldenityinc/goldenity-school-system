@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useTenant } from "./tenant-context";
 
 type NavItem = {
   label: string;
@@ -12,17 +12,33 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Overview", href: "/" },
-  { label: "Students", href: "/students" },
-  { label: "Academics", href: "/academics", requiredModule: "ACADEMICS" },
-  { label: "Billing", href: "/billing", requiredModule: "FINANCE" }
+  { label: "Ikhtisar", href: "/" },
+  { label: "Murid", href: "/students" },
+  { label: "Akademik", href: "/academics", requiredModule: "ACADEMICS" },
+  { label: "Tagihan", href: "/billing", requiredModule: "FINANCE" },
+  { label: "Pengaturan", href: "/settings" }
 ];
+
+function roleLabel(role?: string) {
+  if (role === "SUPER_ADMIN") return "Super Admin";
+  if (role === "TENANT_ADMIN") return "Admin Tenant";
+  if (role === "TEACHER") return "Guru";
+  if (role === "STAFF") return "Staf";
+  return "Pengguna";
+}
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { selectedTenant, activeTenantLabel } = useTenant();
-  const [session, setSession] = useState<{ user?: { role?: string; name?: string; allowedSolutions?: string[] } } | null>(null);
+  const [session, setSession] = useState<{
+    user?: {
+      role?: string;
+      name?: string;
+      allowedSolutions?: string[];
+      profilePhotoUrl?: string | null;
+      tenantLogoUrl?: string | null;
+    };
+  } | null>(null);
 
   useEffect(() => {
     if (pathname === "/login") {
@@ -51,6 +67,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           role?: string;
           name?: string;
           allowedSolutions?: string[];
+          profilePhotoUrl?: string | null;
+          tenantLogoUrl?: string | null;
         };
       };
 
@@ -58,7 +76,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         user: {
           role: payload.session?.role,
           name: payload.session?.name,
-          allowedSolutions: payload.session?.allowedSolutions
+          allowedSolutions: payload.session?.allowedSolutions,
+          profilePhotoUrl: payload.session?.profilePhotoUrl ?? null,
+          tenantLogoUrl: payload.session?.tenantLogoUrl ?? null
         }
       });
     }
@@ -75,7 +95,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   const userRole = session?.user?.role ?? "TEACHER";
-  const userName = session?.user?.name ?? "User";
+  const userName = session?.user?.name ?? "Pengguna";
+  const userPhotoUrl = session?.user?.profilePhotoUrl ?? null;
+  const tenantLogoUrl = session?.user?.tenantLogoUrl ?? null;
   const activeModules = session?.user?.allowedSolutions ?? [];
   const userInitials = userName
     .split(" ")
@@ -101,10 +123,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen flex-col md:flex-row">
         <aside className="flex w-full flex-col border-b border-slate-800 bg-slate-900 text-slate-100 md:w-64 md:border-b-0 md:border-r">
           <div className="flex items-center gap-3 border-b border-slate-800 p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500 font-black text-slate-900">e</div>
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-yellow-500 font-black text-slate-900">
+              {tenantLogoUrl ? <Image src={tenantLogoUrl} alt="Logo tenant" width={32} height={32} className="h-full w-full object-cover" unoptimized /> : <span>e</span>}
+            </div>
             <div>
               <p className="text-sm font-semibold">EduCore</p>
-              <p className="text-xs text-slate-400">{userRole}</p>
+              <p className="text-xs text-slate-400">{roleLabel(userRole)}</p>
             </div>
           </div>
           <nav aria-label="Primary" className="flex-1 space-y-1 p-3 text-sm">
@@ -123,28 +147,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="m-3 rounded-lg border border-slate-700 bg-slate-800 p-3">
-            <p className="text-xs text-slate-400">Current Tenant</p>
-            <p className="mt-1 text-sm font-semibold">{activeTenantLabel}</p>
-            <p className="text-xs text-slate-500">{selectedTenant}</p>
-          </div>
         </aside>
 
         <div className="flex-1">
           <header className="border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="text-sm font-semibold">{activeTenantLabel}</p>
-                <p className="text-xs text-slate-500">Tenant aktif</p>
-              </div>
-
               <div className="flex-1" />
 
               <button className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50" type="button">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-yellow-500">{userInitials || "U"}</span>
+                <span className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-xs font-semibold text-yellow-500">
+                  {userPhotoUrl ? <Image src={userPhotoUrl} alt="Foto profil" width={28} height={28} className="h-full w-full object-cover" unoptimized /> : userInitials || "U"}
+                </span>
                 <span>
                   <span className="block text-sm font-semibold">{userName}</span>
-                  <span className="block text-xs text-slate-500">{userRole}</span>
+                  <span className="block text-xs text-slate-500">{roleLabel(userRole)}</span>
                 </span>
               </button>
               <button
