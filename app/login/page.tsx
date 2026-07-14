@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@goldenity.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -67,18 +67,20 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-slate-600">Masuk untuk mengakses dashboard ERP kampus.</p>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
               Email
             </label>
             <input
               id="email"
+              name="email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="admin@goldenity.com"
+              placeholder="Masukkan email"
+              autoComplete="off"
               required
             />
           </div>
@@ -89,11 +91,13 @@ export default function LoginPage() {
             </label>
             <input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
               placeholder="Masukkan password"
+              autoComplete="new-password"
               required
             />
           </div>

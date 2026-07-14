@@ -22,26 +22,32 @@ export async function POST(request: Request) {
       solution: "SCHOOL_ERP"
     });
 
-    const session = decodeJwtPayload(token);
     const cookieStore = await cookies();
     const isSecure = process.env.NODE_ENV === "production";
+    let session: ReturnType<typeof decodeJwtPayload> | null = null;
+
+    try {
+      session = decodeJwtPayload(token);
+    } catch (decodeError) {
+      console.error("JWT DECODE FAILED AFTER LOGIN:", decodeError);
+    }
 
     cookieStore.set(AUTH_TOKEN_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
       secure: isSecure,
       path: "/",
-      maxAge: typeof session.exp === "number" ? Math.max(session.exp - Math.floor(Date.now() / 1000), 0) : 60 * 60 * 8
+      maxAge: typeof session?.exp === "number" ? Math.max(session.exp - Math.floor(Date.now() / 1000), 0) : 60 * 60 * 8
     });
 
     return NextResponse.json({
       success: true,
       user: {
-        userId: session.userId,
-        tenantId: session.tenantId,
-        role: session.role,
-        allowedSolutions: session.allowedSolutions,
-        name: session.name ?? "User"
+        userId: session?.userId ?? null,
+        tenantId: session?.tenantId ?? null,
+        role: session?.role ?? null,
+        allowedSolutions: session?.allowedSolutions ?? [],
+        name: session?.name ?? "User"
       }
     });
   } catch (error) {

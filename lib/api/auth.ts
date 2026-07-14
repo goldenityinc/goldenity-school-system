@@ -9,7 +9,20 @@ type AdminCoreLoginPayload = {
 type AdminCoreLoginResponse = {
   token?: string;
   accessToken?: string;
+  access_token?: string;
   jwt?: string;
+  data?: {
+    token?: string;
+    accessToken?: string;
+    access_token?: string;
+    jwt?: string;
+  };
+  result?: {
+    token?: string;
+    accessToken?: string;
+    access_token?: string;
+    jwt?: string;
+  };
 };
 
 function resolveAdminCoreBaseUrl() {
@@ -20,8 +33,28 @@ function resolveAdminCoreBaseUrl() {
 }
 
 function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {
-  const maybeToken = data.token ?? data.accessToken ?? data.jwt;
-  return typeof maybeToken === "string" && maybeToken.length > 0 ? maybeToken : null;
+  const candidates = [
+    data.token,
+    data.accessToken,
+    data.access_token,
+    data.jwt,
+    data.data?.token,
+    data.data?.accessToken,
+    data.data?.access_token,
+    data.data?.jwt,
+    data.result?.token,
+    data.result?.accessToken,
+    data.result?.access_token,
+    data.result?.jwt
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.length > 0) {
+      return candidate;
+    }
+  }
+
+  return null;
 }
 
 export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise<string> {
@@ -29,7 +62,7 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
   const loginPayload = {
     email: payload.email,
     password: payload.password,
-    solution: process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP"
+    solution: payload.solution ?? process.env.CENTRAL_COMMAND_SOLUTION || "SCHOOL_ERP"
   };
 
   console.log("LOGIN PAYLOAD:", loginPayload);
