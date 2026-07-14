@@ -145,11 +145,14 @@ export default function NewStudentWizardPage() {
         const result = await createStudent(selectedTenant, payload);
 
         if (!result.success) {
+          setErrorMessage(result.message ?? "Gagal menyimpan murid.");
           setFieldErrors({
             name: result.errors.name,
             nis: result.errors.nis
           });
-          setCurrentStep(1);
+          if (result.errors.name || result.errors.nis) {
+            setCurrentStep(1);
+          }
           return;
         }
 

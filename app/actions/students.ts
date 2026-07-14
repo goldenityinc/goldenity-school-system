@@ -7,7 +7,11 @@ import { StudentSchema, type CreateStudentInput } from "../../lib/student-schema
 
 type CreateStudentResult =
   | { success: true; id: string }
-  | { success: false; errors: Partial<Record<keyof CreateStudentInput, string>> };
+  | {
+      success: false;
+      errors: Partial<Record<keyof CreateStudentInput, string>>;
+      message?: string;
+    };
 
 export async function getStudents(tenantId: string, query?: string) {
   const trimmedQuery = query?.trim();
@@ -163,6 +167,14 @@ export async function getStudentById(tenantId: string, studentId: string) {
 }
 
 export async function createStudent(tenantId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
+  if (!tenantId.trim()) {
+    return {
+      success: false,
+      errors: {},
+      message: "Sesi tenant tidak valid. Silakan login ulang."
+    };
+  }
+
   const parsed = StudentSchema.safeParse(data);
 
   if (!parsed.success) {
@@ -179,27 +191,47 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
 
   const cleanedData = parsed.data;
 
-  const createdStudent = await prisma.student.create({
-    data: {
-      tenantId,
-      fullName: cleanedData.name.trim(),
-      studentNumber: cleanedData.nis.trim(),
-      gender: cleanedData.gender?.trim() || null,
-      placeOfBirth: cleanedData.placeOfBirth?.trim() || null,
-      dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
-      address: cleanedData.address?.trim() || null,
-      fatherName: cleanedData.fatherName?.trim() || null,
-      motherName: cleanedData.motherName?.trim() || null,
-      parentPhone: cleanedData.parentPhone?.trim() || null,
-      parentJob: cleanedData.parentJob?.trim() || null,
-      previousSchool: cleanedData.previousSchool?.trim() || null,
-      previousReportCard: cleanedData.previousReportCard === null ? Prisma.JsonNull : cleanedData.previousReportCard,
-      enrollmentDate: new Date()
-    }
-  });
+  try {
+    const createdStudent = await prisma.student.create({
+      data: {
+        tenantId: tenantId.trim(),
+        fullName: cleanedData.name.trim(),
+        studentNumber: cleanedData.nis.trim(),
+        gender: cleanedData.gender?.trim() || null,
+        placeOfBirth: cleanedData.placeOfBirth?.trim() || null,
+        dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
+        address: cleanedData.address?.trim() || null,
+        fatherName: cleanedData.fatherName?.trim() || null,
+        motherName: cleanedData.motherName?.trim() || null,
+        parentPhone: cleanedData.parentPhone?.trim() || null,
+        parentJob: cleanedData.parentJob?.trim() || null,
+        previousSchool: cleanedData.previousSchool?.trim() || null,
+        previousReportCard: cleanedData.previousReportCard === null ? Prisma.JsonNull : cleanedData.previousReportCard,
+        enrollmentDate: new Date()
+      }
+    });
 
-  revalidatePath("/students");
-  return { success: true, id: createdStudent.id };
+    revalidatePath("/students");
+    return { success: true, id: createdStudent.id };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return {
+          success: false,
+          errors: {
+            nis: "NIS sudah terdaftar untuk tenant ini."
+          },
+          message: "Data murid gagal disimpan karena NIS sudah digunakan."
+        };
+      }
+    }
+
+    return {
+      success: false,
+      errors: {},
+      message: "Terjadi kesalahan saat menyimpan data murid. Coba lagi."
+    };
+  }
 }
 
 export async function deleteStudent(id: string, tenantId: string) {
