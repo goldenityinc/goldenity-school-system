@@ -73,14 +73,14 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
   ];
   const allowedSolutions = allowedSolutionsCandidates.find((items) => items.length > 0) ?? [];
 
-  if (!userId || !tenantId || !role) {
+  if (!userId || !tenantId) {
     throw new Error("Payload JWT tidak lengkap.");
   }
 
   return {
     userId,
     tenantId,
-    role,
+    role: role ?? "TENANT_ADMIN",
     allowedSolutions,
     email: payload.email,
     name: payload.name,
