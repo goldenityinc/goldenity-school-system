@@ -5,18 +5,27 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const connectionString = process.env.DATABASE_URL;
+function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL belum di-set.");
+  if (!connectionString) {
+    return null;
+  }
+
+  const adapter = new PrismaPg({ connectionString });
+  return new PrismaClient({ adapter });
 }
 
-const adapter = new PrismaPg({ connectionString });
+const prismaClient = global.prisma ?? createPrismaClient();
 
-const prisma = global.prisma ?? new PrismaClient({ adapter });
-
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
+if (prismaClient && process.env.NODE_ENV !== "production") {
+  global.prisma = prismaClient;
 }
+
+const prisma = prismaClient ?? new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    throw new Error(`DATABASE_URL belum di-set. Prisma client tidak dapat digunakan untuk ${String(property)}.`);
+  }
+});
 
 export default prisma;

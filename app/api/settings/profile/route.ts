@@ -259,6 +259,10 @@ export async function PUT(request: Request) {
     }
   }
 
+  if (!user) {
+    return NextResponse.json({ message: "Akun lokal tidak tersedia setelah sinkronisasi." }, { status: 503 });
+  }
+
   const updates: {
     name?: string;
     email?: string;
