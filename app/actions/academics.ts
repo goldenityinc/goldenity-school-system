@@ -30,7 +30,7 @@ export async function getLecturers(tenantId: string) {
     orderBy: { createdAt: "desc" }
   });
 
-  return lecturers.map((lecturer) => ({
+  return lecturers.map((lecturer: (typeof lecturers)[number]) => ({
     id: lecturer.id,
     nip: lecturer.staffId,
     name: lecturer.fullName,
@@ -51,7 +51,7 @@ export async function getHomeroomTeachers(tenantId: string) {
     }
   });
 
-  return lecturers.map((lecturer) => ({
+  return lecturers.map((lecturer: (typeof lecturers)[number]) => ({
     id: lecturer.id,
     nip: lecturer.staffId,
     name: lecturer.fullName
@@ -64,7 +64,7 @@ export async function getCourses(tenantId: string) {
     orderBy: { createdAt: "desc" }
   });
 
-  return courses.map((course) => ({
+  return courses.map((course: (typeof courses)[number]) => ({
     id: course.id,
     code: course.code,
     name: course.name,
@@ -85,7 +85,7 @@ export async function getCourseOfferings(tenantId: string) {
     }
   });
 
-  return offerings.map((offering) => ({
+  return offerings.map((offering: (typeof offerings)[number]) => ({
     id: offering.id,
     courseId: offering.courseId,
     lecturerId: offering.lecturerId,
@@ -176,7 +176,7 @@ export async function getCourseOfferingById(tenantId: string, offeringId: string
           nip: offering.lecturer.staffId
         }
       : null,
-    enrollments: offering.enrollments.map((enrollment) => ({
+    enrollments: offering.enrollments.map((enrollment: (typeof offering.enrollments)[number]) => ({
       id: enrollment.id,
       studentId: enrollment.studentId,
       status: enrollment.status,
