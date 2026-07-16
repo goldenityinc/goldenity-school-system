@@ -186,7 +186,9 @@ export async function enrollStudents(
   });
 
   const existingSet = new Set(existing.map((item: (typeof existing)[number]) => item.studentId));
-  const newStudentIds = validStudentIds.filter((studentId) => !existingSet.has(studentId));
+  const newStudentIds = validStudentIds.filter(
+    (studentId: (typeof validStudentIds)[number]) => !existingSet.has(studentId)
+  );
 
   if (newStudentIds.length === 0) {
     return {

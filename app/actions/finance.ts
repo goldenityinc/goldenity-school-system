@@ -165,7 +165,10 @@ export async function getFinanceData(tenantId: string): Promise<FinanceData> {
   ]);
 
   const mappedInvoices = invoices.map((invoice: (typeof invoices)[number]) => {
-    const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amountPaid, 0);
+    const totalPaid = invoice.payments.reduce(
+      (sum: number, payment: (typeof invoice.payments)[number]) => sum + payment.amountPaid,
+      0
+    );
 
     return {
       id: invoice.id,

@@ -70,7 +70,9 @@ export async function getStudents(tenantId: string, query?: string) {
       ...(() => {
         const latestEnrollment = student.enrollments[0];
         const relatedGrade = latestEnrollment
-          ? student.grades.find((grade) => grade.courseOfferingId === latestEnrollment.courseOfferingId) ?? student.grades[0]
+          ? student.grades.find(
+              (grade: (typeof student.grades)[number]) => grade.courseOfferingId === latestEnrollment.courseOfferingId
+            ) ?? student.grades[0]
           : student.grades[0];
 
         return {

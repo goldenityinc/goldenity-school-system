@@ -155,7 +155,8 @@ export async function getRecentStudents(tenantId: string) {
     email: student.email,
     createdAt: student.createdAt.toISOString(),
     enrollments: student.enrollments.map((enrollment: (typeof student.enrollments)[number]) => {
-      const matchedGrade = student.grades.find((grade) => grade.courseOfferingId === enrollment.courseOfferingId) ?? null;
+      const matchedGrade =
+        student.grades.find((grade: (typeof student.grades)[number]) => grade.courseOfferingId === enrollment.courseOfferingId) ?? null;
 
       return {
         id: enrollment.id,
