@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CreditCard,
   Download,
+  Filter,
   MoreHorizontal,
   Plus,
   Search,
@@ -55,10 +56,14 @@ const studentsSeed: Student[] = [
 ];
 
 const tokenCards = [
-  { label: "Primary", className: "bg-primary text-white" },
-  { label: "Accent", className: "bg-accent text-primary" },
-  { label: "Surface", className: "bg-surface border border-slate-200 text-primary" },
-  { label: "Background", className: "bg-background border border-slate-200 text-slate-700" }
+  { label: "Primary Navy", hex: "#0F172A", className: "bg-primary text-white" },
+  { label: "Navy 800", hex: "#1E293B", className: "bg-slate-800 text-white" },
+  { label: "Navy 700", hex: "#334155", className: "bg-slate-700 text-white" },
+  { label: "Accent Gold", hex: "#EAB308", className: "bg-accent text-primary" },
+  { label: "Gold Light", hex: "#FEF08A", className: "bg-amber-200 text-primary" },
+  { label: "Background", hex: "#F8FAFC", className: "bg-background border border-slate-200 text-slate-700" },
+  { label: "Surface", hex: "#FFFFFF", className: "bg-surface border border-slate-200 text-slate-700" },
+  { label: "Muted", hex: "#F1F5F9", className: "bg-slate-100 border border-slate-200 text-slate-700" }
 ];
 
 const flagsSeed = [
@@ -170,7 +175,8 @@ export function DesignSystemShowcase() {
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {tokenCards.map((item) => (
                     <div key={item.label} className={`min-h-16 rounded-lg p-2 text-xs font-semibold ${item.className}`}>
-                      {item.label}
+                      <p>{item.hex}</p>
+                      <p className="mt-2">{item.label}</p>
                     </div>
                   ))}
                 </div>
@@ -213,19 +219,26 @@ export function DesignSystemShowcase() {
           <div>
             <SectionHeader title="Color Tokens" description="Semua warna utama direferensikan dari token dan utility, bukan nilai hardcoded." />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-              {[
-                { label: "Primary", hex: "#0F172A", cls: "bg-primary text-white" },
-                { label: "Accent", hex: "#EAB308", cls: "bg-accent text-primary" },
-                { label: "Background", hex: "#F8FAFC", cls: "bg-background border border-slate-200 text-slate-700" },
-                { label: "Surface", hex: "#FFFFFF", cls: "bg-surface border border-slate-200 text-slate-700" },
-                { label: "Success", hex: "emerald", cls: "bg-emerald-500 text-white" },
-                { label: "Warning", hex: "amber", cls: "bg-amber-500 text-white" },
-                { label: "Danger", hex: "red", cls: "bg-red-500 text-white" },
-                { label: "Info", hex: "blue", cls: "bg-blue-500 text-white" }
-              ].map((item) => (
+              {tokenCards.map((item) => (
                 <article key={item.label} className="space-y-1">
-                  <div className={`flex h-16 items-end rounded-lg p-2 text-xs font-semibold ${item.cls}`}>{item.hex}</div>
+                  <div className={`flex h-16 items-end rounded-lg p-2 text-xs font-semibold ${item.className}`}>{item.hex}</div>
                   <p className="text-xs font-semibold text-primary">{item.label}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              {[
+                { label: "Success", hex: "#22C55E", note: "Green - Active / Paid", cls: "bg-emerald-500" },
+                { label: "Warning", hex: "#F59E0B", note: "Amber - Pending / Trial", cls: "bg-amber-500" },
+                { label: "Danger", hex: "#EF4444", note: "Red - Suspended / Failed", cls: "bg-red-500" },
+                { label: "Info", hex: "#3B82F6", note: "Blue - Informational", cls: "bg-blue-500" }
+              ].map((item) => (
+                <article key={item.label} className="rounded-xl border border-slate-200 p-3">
+                  <span className={`inline-flex h-6 w-6 rounded-md ${item.cls}`} />
+                  <p className="mt-2 text-sm font-semibold text-primary">{item.label}</p>
+                  <p className="text-xs text-slate-500">{item.hex}</p>
+                  <p className="text-xs text-slate-400">{item.note}</p>
                 </article>
               ))}
             </div>
@@ -249,6 +262,29 @@ export function DesignSystemShowcase() {
                   </div>
                 </article>
               ))}
+
+              <article className="rounded-xl border border-slate-200 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Icon-only & Special</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" aria-label="Add" className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-white hover:bg-slate-800">
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" aria-label="Filter" className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50">
+                    <Filter className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" aria-label="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100">
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                  <Button size="sm" variant="primary" className="bg-primary text-white hover:bg-slate-800">
+                    <Plus className="h-3.5 w-3.5" /> Add Student
+                  </Button>
+                  <div className="inline-flex overflow-hidden rounded-md border border-slate-200">
+                    <button type="button" className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">List</button>
+                    <button type="button" className="bg-primary px-3 py-1.5 text-xs text-white">Grid</button>
+                    <button type="button" className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">Board</button>
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
         )}
@@ -322,6 +358,24 @@ export function DesignSystemShowcase() {
                   <Badge variant="pro">Pro</Badge>
                   <Badge variant="enterprise">Enterprise</Badge>
                   <Badge variant="trial">Trial</Badge>
+                  <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Expired</span>
+                </div>
+              </article>
+              <article className="rounded-xl border border-slate-200 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">In Context - Student Card</p>
+                <div className="space-y-3">
+                  {studentsSeed.slice(0, 4).map((student) => (
+                    <div key={student.id} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0">
+                      <div>
+                        <p className="text-sm font-semibold text-primary">{student.name}</p>
+                        <p className="text-xs text-slate-500">{student.school} - {student.grade}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-primary">{student.fee}</span>
+                        <Badge variant={statusVariant(student.status)}>{student.status}</Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </article>
             </div>

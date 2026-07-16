@@ -24,15 +24,19 @@ Sumber implementasi:
 ### 3.1 Color Tokens
 
 - Primary: #0F172A
+- Navy 800: #1E293B
+- Navy 700: #334155
 - Accent: #EAB308
+- Gold Light: #FEF08A
 - Background: #F8FAFC
 - Surface: #FFFFFF
+- Muted: #F1F5F9
 
 Status dan semantic colors (pemakaian komponen):
-- Active: hijau (success)
-- Pending: amber (warning)
-- Suspended: merah (danger)
-- Inactive: slate (neutral)
+- Success: #22C55E (Active / Paid)
+- Warning: #F59E0B (Pending / Trial)
+- Danger: #EF4444 (Suspended / Failed)
+- Info: #3B82F6 (Informational)
 - Trial/Pro/Enterprise: biru/violet sesuai konteks badge
 
 Catatan:
@@ -81,15 +85,17 @@ Sizes:
 Aturan:
 - Hanya satu primary action dominan per area/fold.
 - Gunakan danger hanya untuk aksi irreversible/sensitif.
+- Sediakan blok `icon-only & special` untuk daftar aksi cepat (icon button, add action, segmented control list-grid-board).
 
 ## 5.2 Badge
 
 Variants aktif:
-- active, pending, suspended, inactive, trial, pro, enterprise
+- active, pending, suspended, inactive, trial, pro, enterprise, expired
 
 Aturan:
 - Badge harus semantic, bukan sekadar dekorasi.
 - Label status harus singkat dan konsisten lintas modul.
+- Harus ada contoh `in-context` (misalnya row siswa dengan fee + status badge), bukan hanya preview badge terpisah.
 
 ## 5.3 Modal
 
