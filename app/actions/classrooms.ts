@@ -86,7 +86,7 @@ export async function getClassrooms(tenantId: string) {
       nip: classroom.homeroomTeacher.staffId,
       name: classroom.homeroomTeacher.fullName
     },
-    students: classroom.students.map((student) => ({
+    students: classroom.students.map((student: (typeof classroom.students)[number]) => ({
       id: student.id,
       nis: student.studentNumber,
       name: student.fullName,
@@ -226,7 +226,7 @@ export async function getClassroomById(classroomId: string, tenantId: string) {
       nip: classroom.homeroomTeacher.staffId,
       name: classroom.homeroomTeacher.fullName
     },
-    students: classroom.students.map((student) => ({
+    students: classroom.students.map((student: (typeof classroom.students)[number]) => ({
       id: student.id,
       nis: student.studentNumber,
       name: student.fullName,
