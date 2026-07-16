@@ -7,6 +7,7 @@ export default defineConfig({
     path: "prisma/migrations"
   },
   datasource: {
-    url: process.env["DATABASE_URL"]!
+    // Generate does not need a live DB connection; fallback keeps build-time generation stable.
+    url: process.env["DATABASE_URL"] ?? "postgresql://postgres:postgres@localhost:5432/goldenity"
   }
 });
