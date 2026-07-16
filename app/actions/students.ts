@@ -359,7 +359,7 @@ export async function deleteStudent(id: string, tenantId: string) {
 
   const enrollmentIds = enrollments.map((enrollment: (typeof enrollments)[number]) => enrollment.id);
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     if (enrollmentIds.length > 0) {
       await tx.grade.deleteMany({
         where: {

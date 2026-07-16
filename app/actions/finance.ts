@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../../lib/prisma";
 
@@ -317,7 +318,7 @@ export async function recordPayment(
     };
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.payment.create({
       data: {
         tenantId,
