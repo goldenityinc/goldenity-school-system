@@ -314,7 +314,7 @@ export async function moveStudent(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const alreadyInNew = await tx.enrollment.findFirst({
         where: {
           tenantId,
