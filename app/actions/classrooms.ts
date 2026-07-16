@@ -75,7 +75,7 @@ export async function getClassrooms(tenantId: string) {
     }
   });
 
-  return classrooms.map((classroom) => ({
+  return classrooms.map((classroom: (typeof classrooms)[number]) => ({
     id: classroom.id,
     name: classroom.name,
     academicYear: classroom.academicYear,
