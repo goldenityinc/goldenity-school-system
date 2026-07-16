@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { getCurrentSession } from "../../../../lib/utils/jwt";
@@ -88,7 +89,7 @@ async function resolveOrCreateLocalUser(session: {
       }
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
       // Another process may have created the local row between the find and create.
     } else {
       throw error;
@@ -142,7 +143,7 @@ async function hasDatabaseTable(tableName: string) {
 }
 
 function formatPrismaError(error: unknown) {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (error instanceof PrismaClientKnownRequestError) {
     return `Operasi database ditolak (kode: ${error.code}).`;
   }
 
@@ -333,7 +334,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("[settings.profile.PUT.user-update]", error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ message: "Email sudah digunakan akun lain." }, { status: 400 });
     }
 

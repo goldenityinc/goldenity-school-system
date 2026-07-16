@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../lib/prisma";
 import { StudentSchema, type CreateStudentInput } from "../../lib/student-schema";
 
@@ -281,7 +282,7 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
       };
     }
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         return {
           success: false,
@@ -300,8 +301,7 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
         revalidatePath("/students");
         return { success: true, id: fallbackStudent.id };
       } catch (fallbackError) {
-        const fallbackCode =
-          fallbackError instanceof Prisma.PrismaClientKnownRequestError ? fallbackError.code : null;
+        const fallbackCode = fallbackError instanceof PrismaClientKnownRequestError ? fallbackError.code : null;
 
         return {
           success: false,

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../lib/prisma";
 import {
   CourseOfferingSchema,
@@ -353,7 +354,7 @@ export async function createCourseOffering(tenantId: string, data: CreateCourseO
     revalidatePath("/academics");
     return { success: true, id: createdOffering.id };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
       return {
         success: false,
         errors: {
