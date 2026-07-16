@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { PrismaClientInitializationError, PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../lib/prisma";
 import { StudentSchema, type CreateStudentInput } from "../../lib/student-schema";
 
@@ -276,7 +276,7 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
     revalidatePath("/students");
     return { success: true, id: createdStudent.id };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientInitializationError) {
+    if (error instanceof PrismaClientInitializationError) {
       return {
         success: false,
         errors: {},

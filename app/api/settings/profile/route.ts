@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { PrismaClientInitializationError, PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { getCurrentSession } from "../../../../lib/utils/jwt";
@@ -147,7 +147,7 @@ function formatPrismaError(error: unknown) {
     return `Operasi database ditolak (kode: ${error.code}).`;
   }
 
-  if (error instanceof Prisma.PrismaClientInitializationError) {
+  if (error instanceof PrismaClientInitializationError) {
     return "Koneksi database belum siap.";
   }
 
