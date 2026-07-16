@@ -158,7 +158,7 @@ export async function getStudentGrades(tenantId: string, studentId: string) {
       }
     });
 
-    return grades.map((grade) => ({
+    return grades.map((grade: (typeof grades)[number]) => ({
       id: grade.id,
       studentId: grade.studentId,
       courseOfferingId: grade.courseOfferingId,
@@ -206,7 +206,7 @@ export async function getGradesByCourseOffering(tenantId: string, courseOffering
       }
     });
 
-    return grades.map((grade) => ({
+    return grades.map((grade: (typeof grades)[number]) => ({
       id: grade.id,
       studentId: grade.studentId,
       courseOfferingId: grade.courseOfferingId,

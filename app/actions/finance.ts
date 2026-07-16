@@ -114,7 +114,7 @@ export async function getBillingStudents(tenantId: string) {
     }
   });
 
-  return students.map((student) => ({
+  return students.map((student: (typeof students)[number]) => ({
     id: student.id,
     nis: student.studentNumber,
     name: student.fullName
@@ -164,7 +164,7 @@ export async function getFinanceData(tenantId: string): Promise<FinanceData> {
     })
   ]);
 
-  const mappedInvoices = invoices.map((invoice) => {
+  const mappedInvoices = invoices.map((invoice: (typeof invoices)[number]) => {
     const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amountPaid, 0);
 
     return {
@@ -186,7 +186,7 @@ export async function getFinanceData(tenantId: string): Promise<FinanceData> {
 
   return {
     invoices: mappedInvoices,
-    payments: payments.map((payment) => ({
+    payments: payments.map((payment: (typeof payments)[number]) => ({
       id: payment.id,
       invoiceId: payment.invoiceId,
       amountPaid: payment.amountPaid,
@@ -196,7 +196,7 @@ export async function getFinanceData(tenantId: string): Promise<FinanceData> {
       invoiceTitle: payment.invoice.title,
       studentName: payment.invoice.student.fullName
     })),
-    expenses: expenses.map((expense) => ({
+    expenses: expenses.map((expense: (typeof expenses)[number]) => ({
       id: expense.id,
       title: expense.title,
       amount: expense.amount,
@@ -436,7 +436,7 @@ export async function generateBulkSPP(
   }
 
   await prisma.invoice.createMany({
-    data: students.map((student) => ({
+    data: students.map((student: (typeof students)[number]) => ({
       tenantId,
       studentId: student.id,
       title: cleaned.title.trim(),

@@ -76,12 +76,12 @@ export async function getEnrollmentData(tenantId: string) {
   ]);
 
   return {
-    students: students.map((student) => ({
+    students: students.map((student: (typeof students)[number]) => ({
       id: student.id,
       nis: student.studentNumber,
       name: student.fullName
     })),
-    courseOfferings: courseOfferings.map((offering) => ({
+    courseOfferings: courseOfferings.map((offering: (typeof courseOfferings)[number]) => ({
       id: offering.id,
       dayOfWeek: offering.dayOfWeek,
       startTime: offering.startTime,
@@ -97,7 +97,7 @@ export async function getEnrollmentData(tenantId: string) {
             nip: offering.lecturer.staffId
           }
         : null,
-      enrollments: offering.enrollments.map((enrollment) => ({
+      enrollments: offering.enrollments.map((enrollment: (typeof offering.enrollments)[number]) => ({
         id: enrollment.id,
         studentId: enrollment.studentId,
         status: enrollment.status,
@@ -162,7 +162,7 @@ export async function enrollStudents(
     };
   }
 
-  const validStudentIds = validStudents.map((student) => student.id);
+  const validStudentIds = validStudents.map((student: (typeof validStudents)[number]) => student.id);
 
   if (validStudentIds.length === 0) {
     return {
@@ -185,7 +185,7 @@ export async function enrollStudents(
     select: { studentId: true }
   });
 
-  const existingSet = new Set(existing.map((item) => item.studentId));
+  const existingSet = new Set(existing.map((item: (typeof existing)[number]) => item.studentId));
   const newStudentIds = validStudentIds.filter((studentId) => !existingSet.has(studentId));
 
   if (newStudentIds.length === 0) {
@@ -197,7 +197,7 @@ export async function enrollStudents(
 
   try {
     const created = await prisma.enrollment.createMany({
-      data: newStudentIds.map((studentId) => ({
+      data: newStudentIds.map((studentId: (typeof newStudentIds)[number]) => ({
         tenantId,
         studentId,
         courseOfferingId: cleaned.courseOfferingId,

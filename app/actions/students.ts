@@ -66,7 +66,7 @@ export async function getStudents(tenantId: string, query?: string) {
       }
     });
 
-    return students.map((student) => ({
+    return students.map((student: (typeof students)[number]) => ({
       ...(() => {
         const latestEnrollment = student.enrollments[0];
         const relatedGrade = latestEnrollment
@@ -112,7 +112,7 @@ export async function getUnassignedStudents(tenantId: string) {
       }
     });
 
-    return students.map((student) => ({
+    return students.map((student: (typeof students)[number]) => ({
       id: student.id,
       nis: student.studentNumber,
       name: student.fullName,
@@ -179,7 +179,7 @@ export async function getStudentById(tenantId: string, studentId: string) {
             semester: student.classroom.semester
           }
         : null,
-      enrollments: student.enrollments.map((enrollment) => ({
+      enrollments: student.enrollments.map((enrollment: (typeof student.enrollments)[number]) => ({
         id: enrollment.id,
         status: enrollment.status,
         dayOfWeek: enrollment.courseOffering.dayOfWeek,
@@ -355,7 +355,7 @@ export async function deleteStudent(id: string, tenantId: string) {
     }
   });
 
-  const enrollmentIds = enrollments.map((enrollment) => enrollment.id);
+  const enrollmentIds = enrollments.map((enrollment: (typeof enrollments)[number]) => enrollment.id);
 
   await prisma.$transaction(async (tx) => {
     if (enrollmentIds.length > 0) {

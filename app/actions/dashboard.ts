@@ -98,7 +98,7 @@ export async function getDashboardMetrics(tenantId: string): Promise<DashboardMe
     totalTeachers,
     totalClassrooms,
     totalRevenueThisMonth: monthlyRevenueAgg._sum.amountPaid ?? 0,
-    todaySchedule: todaySchedule.map((offering) => ({
+    todaySchedule: todaySchedule.map((offering: (typeof todaySchedule)[number]) => ({
       id: offering.id,
       courseName: offering.course.name,
       classroomName: offering.classroom?.name ?? null,
@@ -148,13 +148,13 @@ export async function getRecentStudents(tenantId: string) {
     }
   });
 
-  return students.map((student) => ({
+  return students.map((student: (typeof students)[number]) => ({
     id: student.id,
     fullName: student.fullName,
     studentNumber: student.studentNumber,
     email: student.email,
     createdAt: student.createdAt.toISOString(),
-    enrollments: student.enrollments.map((enrollment) => {
+    enrollments: student.enrollments.map((enrollment: (typeof student.enrollments)[number]) => {
       const matchedGrade = student.grades.find((grade) => grade.courseOfferingId === enrollment.courseOfferingId) ?? null;
 
       return {
