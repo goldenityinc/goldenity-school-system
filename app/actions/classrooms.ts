@@ -92,7 +92,7 @@ export async function getClassrooms(tenantId: string) {
       name: student.fullName,
       isActive: student.isActive
     })),
-    courseOfferings: classroom.courseOfferings.map((offering) => ({
+    courseOfferings: classroom.courseOfferings.map((offering: (typeof classroom.courseOfferings)[number]) => ({
       id: offering.id,
       term: offering.term,
       courseName: offering.course.name,
@@ -233,7 +233,7 @@ export async function getClassroomById(classroomId: string, tenantId: string) {
       gender: student.gender,
       isActive: student.isActive
     })),
-    courseOfferings: classroom.courseOfferings.map((offering) => ({
+    courseOfferings: classroom.courseOfferings.map((offering: (typeof classroom.courseOfferings)[number]) => ({
       id: offering.id,
       term: offering.term,
       academicYear: offering.academicYear,
