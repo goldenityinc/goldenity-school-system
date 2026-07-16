@@ -13,6 +13,11 @@ type ModalProps = {
 
 export function Modal({ open, title, onClose, children, panelClassName = "", bodyClassName = "" }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -21,7 +26,7 @@ export function Modal({ open, title, onClose, children, panelClassName = "", bod
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
       }
     }
 
@@ -31,7 +36,7 @@ export function Modal({ open, title, onClose, children, panelClassName = "", bod
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) {
     return null;
