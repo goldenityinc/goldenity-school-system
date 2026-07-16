@@ -265,7 +265,10 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
     parentPhone: cleanedData.parentPhone?.trim() || null,
     parentJob: cleanedData.parentJob?.trim() || null,
     previousSchool: cleanedData.previousSchool?.trim() || null,
-    previousReportCard: cleanedData.previousReportCard === null ? Prisma.JsonNull : cleanedData.previousReportCard
+    previousReportCard:
+      cleanedData.previousReportCard === null
+        ? Prisma.NullableJsonNullValueInput.JsonNull
+        : cleanedData.previousReportCard
   };
 
   try {
