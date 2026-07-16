@@ -37,8 +37,31 @@ const currencyFormatter = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0
 });
 
+const nominalInputFormatter = new Intl.NumberFormat("id-ID", {
+  maximumFractionDigits: 0
+});
+
 function formatCurrency(value: number) {
   return currencyFormatter.format(value);
+}
+
+function normalizeNominalInput(value: string) {
+  return value.replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "");
+}
+
+function formatNominalInput(value: string) {
+  const normalized = normalizeNominalInput(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  return nominalInputFormatter.format(Number(normalized));
+}
+
+function parseNominalInput(value: string) {
+  const normalized = normalizeNominalInput(value);
+  return normalized ? Number(normalized) : 0;
 }
 
 function formatDate(value: string) {
@@ -225,7 +248,7 @@ export default function BillingPage() {
       const result = await createInvoice(selectedTenant, {
         studentId: invoiceForm.studentId,
         title: invoiceForm.title,
-        amount: Number(invoiceForm.amount),
+        amount: parseNominalInput(invoiceForm.amount),
         dueDate: invoiceForm.dueDate
       });
 
@@ -258,7 +281,7 @@ export default function BillingPage() {
       const result = await generateBulkSPP(
         selectedTenant,
         bulkForm.title,
-        Number(bulkForm.amount),
+        parseNominalInput(bulkForm.amount),
         bulkForm.dueDate
       );
 
@@ -560,10 +583,16 @@ export default function BillingPage() {
             </label>
             <input
               id="invoice-amount"
-              type="number"
-              min="1"
+              type="text"
+              inputMode="numeric"
               value={invoiceForm.amount}
-              onChange={(event) => setInvoiceForm((previous) => ({ ...previous, amount: event.target.value }))}
+              onChange={(event) =>
+                setInvoiceForm((previous) => ({
+                  ...previous,
+                  amount: formatNominalInput(event.target.value)
+                }))
+              }
+              placeholder="Contoh: 1.500.000"
               className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
             />
             {invoiceErrors.amount ? <p className="mt-1 text-xs text-red-600">{invoiceErrors.amount}</p> : null}
@@ -617,10 +646,16 @@ export default function BillingPage() {
             </label>
             <input
               id="bulk-amount"
-              type="number"
-              min="1"
+              type="text"
+              inputMode="numeric"
               value={bulkForm.amount}
-              onChange={(event) => setBulkForm((previous) => ({ ...previous, amount: event.target.value }))}
+              onChange={(event) =>
+                setBulkForm((previous) => ({
+                  ...previous,
+                  amount: formatNominalInput(event.target.value)
+                }))
+              }
+              placeholder="Contoh: 1.500.000"
               className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
             />
             {bulkErrors.amount ? <p className="mt-1 text-xs text-red-600">{bulkErrors.amount}</p> : null}

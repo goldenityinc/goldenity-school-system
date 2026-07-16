@@ -17,15 +17,6 @@ type SummaryCard = {
   accentClass: string;
 };
 
-const monthlyPitchData = [
-  { month: "Jan", revenue: 12500000 },
-  { month: "Feb", revenue: 14300000 },
-  { month: "Mar", revenue: 15900000 },
-  { month: "Apr", revenue: 17100000 },
-  { month: "Mei", revenue: 18400000 },
-  { month: "Jun", revenue: 20100000 }
-];
-
 function formatCurrencyIdr(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -146,7 +137,7 @@ export function DashboardOverview({ userName, userRole, metrics }: DashboardOver
           </div>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyPitchData} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+              <BarChart data={metrics.revenueTrend} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="month" tick={{ fill: "#475569", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000000)} jt`} tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} width={44} />

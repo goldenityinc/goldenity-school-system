@@ -13,11 +13,17 @@ type DashboardScheduleItem = {
   room: string | null;
 };
 
+type DashboardRevenuePoint = {
+  month: string;
+  revenue: number;
+};
+
 export type DashboardMetrics = {
   totalActiveStudents: number;
   totalTeachers: number;
   totalClassrooms: number;
   totalRevenueThisMonth: number;
+  revenueTrend: DashboardRevenuePoint[];
   todaySchedule: DashboardScheduleItem[];
 };
 
@@ -35,13 +41,14 @@ export async function getDashboardMetrics(tenantId: string): Promise<DashboardMe
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const sixMonthsAgoStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const todayAliases = dayAliasesByIndex[now.getDay()];
 
   // Tenant isolation rule:
   // Always source tenantId from decoded JWT session (getCurrentSession())
   // and apply it to every Prisma query, e.g. prisma.student.findMany({ where: { tenantId: session.tenantId } }).
 
-  const [totalActiveStudents, totalTeachers, totalClassrooms, monthlyRevenueAgg, todaySchedule] = await Promise.all([
+  const [totalActiveStudents, totalTeachers, totalClassrooms, monthlyRevenueAgg, paymentsForTrend, todaySchedule] = await Promise.all([
     prisma.student.count({
       where: {
         tenantId,
@@ -62,6 +69,19 @@ export async function getDashboardMetrics(tenantId: string): Promise<DashboardMe
           gte: startOfMonth,
           lt: startOfNextMonth
         }
+      }
+    }),
+    prisma.payment.findMany({
+      where: {
+        tenantId,
+        paymentDate: {
+          gte: sixMonthsAgoStart,
+          lt: startOfNextMonth
+        }
+      },
+      select: {
+        paymentDate: true,
+        amountPaid: true
       }
     }),
     prisma.courseOffering.findMany({
@@ -93,11 +113,32 @@ export async function getDashboardMetrics(tenantId: string): Promise<DashboardMe
     })
   ]);
 
+  const revenueByMonthKey = new Map<string, number>();
+
+  for (const payment of paymentsForTrend) {
+    const year = payment.paymentDate.getFullYear();
+    const month = payment.paymentDate.getMonth();
+    const monthKey = `${year}-${month}`;
+    const existing = revenueByMonthKey.get(monthKey) ?? 0;
+    revenueByMonthKey.set(monthKey, existing + payment.amountPaid);
+  }
+
+  const revenueTrend: DashboardRevenuePoint[] = Array.from({ length: 6 }, (_, index) => {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    const monthKey = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
+
+    return {
+      month: new Intl.DateTimeFormat("id-ID", { month: "short" }).format(monthDate),
+      revenue: revenueByMonthKey.get(monthKey) ?? 0
+    };
+  });
+
   return {
     totalActiveStudents,
     totalTeachers,
     totalClassrooms,
     totalRevenueThisMonth: monthlyRevenueAgg._sum.amountPaid ?? 0,
+    revenueTrend,
     todaySchedule: todaySchedule.map((offering: (typeof todaySchedule)[number]) => ({
       id: offering.id,
       courseName: offering.course.name,

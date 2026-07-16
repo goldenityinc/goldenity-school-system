@@ -9,6 +9,7 @@ const FALLBACK_METRICS: DashboardMetrics = {
   totalTeachers: 0,
   totalClassrooms: 0,
   totalRevenueThisMonth: 0,
+  revenueTrend: [],
   todaySchedule: []
 };
 
