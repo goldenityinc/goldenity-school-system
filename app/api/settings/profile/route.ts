@@ -60,6 +60,60 @@ async function getLocalUserSafe(sessionUserId: string, email?: string) {
   });
 }
 
+async function resolveOrCreateLocalUser(session: {
+  userId: string;
+  email?: string;
+  name?: string;
+  role: string;
+  tenantId: string | null;
+  tenantName?: string;
+}, canWriteTenantSlug: boolean, canWriteProfilePhotoUrl: boolean) {
+  const localEmail = session.email?.trim().toLowerCase() || buildFallbackLocalEmail(session.userId);
+
+  const existingUser = await getLocalUserSafe(session.userId, session.email);
+  if (existingUser) {
+    return existingUser;
+  }
+
+  try {
+    await prisma.user.create({
+      data: {
+        name: session.name?.trim() || session.email || "Pengguna",
+        email: localEmail,
+        password: await bcrypt.hash(`local-seed:${session.userId}:${Date.now()}`, 10),
+        role: session.role,
+        tenantId: session.tenantId,
+        ...(canWriteTenantSlug ? { tenantSlug: session.tenantName ?? null } : {}),
+        ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: null } : {})
+      }
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      // Another process may have created the local row between the find and create.
+    } else {
+      throw error;
+    }
+  }
+
+  const createdOrExisting = await prisma.user.findFirst({
+    where: {
+      OR: [{ id: session.userId }, { email: localEmail }, ...(session.email ? [{ email: session.email.trim().toLowerCase() }] : [])]
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      tenantId: true,
+      ...(canWriteTenantSlug ? { tenantSlug: true } : {}),
+      ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: true } : {}),
+      password: true
+    }
+  });
+
+  return createdOrExisting;
+}
+
 async function hasDatabaseColumn(tableName: string, columnName: string) {
   const result = await prisma.$queryRaw<{ exists: boolean }[]>(Prisma.sql`
     SELECT EXISTS(
@@ -198,39 +252,7 @@ export async function PUT(request: Request) {
 
   if (!user) {
     try {
-      const localEmail = session.email?.trim() || buildFallbackLocalEmail(session.userId);
-      const generatedPassword = await bcrypt.hash(`local-seed:${session.userId}:${Date.now()}`, 10);
-
-      user = await prisma.user.upsert({
-        where: {
-          id: session.userId
-        },
-        create: {
-          name: session.name?.trim() || session.email || "Pengguna",
-          email: localEmail,
-          password: generatedPassword,
-          role: session.role,
-          tenantId: session.tenantId,
-          ...(canWriteTenantSlug ? { tenantSlug: session.tenantName ?? null } : {}),
-          ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: null } : {})
-        },
-        update: {
-          name: session.name?.trim() || session.email || "Pengguna",
-          role: session.role,
-          tenantId: session.tenantId,
-          ...(canWriteTenantSlug ? { tenantSlug: session.tenantName ?? null } : {})
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          tenantId: true,
-          ...(canWriteTenantSlug ? { tenantSlug: true } : {}),
-          ...(canWriteProfilePhotoUrl ? { profilePhotoUrl: true } : {}),
-          password: true
-        }
-      });
+      user = await resolveOrCreateLocalUser(session, canWriteTenantSlug, canWriteProfilePhotoUrl);
     } catch (error) {
       console.error("[settings.profile.PUT.auto-provision]", error);
       return NextResponse.json({ message: "Akun lokal tidak ditemukan dan gagal dibuat otomatis." }, { status: 503 });
