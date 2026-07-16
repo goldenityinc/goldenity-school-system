@@ -141,7 +141,8 @@ export default function GradesPage() {
           return;
         }
 
-        const enrollmentRows = offeringDetail.enrollments.map((enrollment) => ({
+        const enrollmentRows = offeringDetail.enrollments.map(
+          (enrollment: (typeof offeringDetail.enrollments)[number]) => ({
           id: enrollment.id,
           studentId: enrollment.studentId,
           student: {
@@ -149,7 +150,8 @@ export default function GradesPage() {
             nis: enrollment.student.nis,
             name: enrollment.student.name
           }
-        }));
+          })
+        );
 
         const initialScores: Record<string, StudentScoreForm> = {};
 
