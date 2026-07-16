@@ -3,9 +3,11 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { getCurrentSession } from "../../../../lib/utils/jwt";
+import { verifyLoginWithCentralCommand } from "../../../../lib/services/central-command";
 
 type SettingsPayload = {
   name?: string;
+  email?: string;
   profilePhotoUrl?: string | null;
   currentPassword?: string;
   newPassword?: string;
@@ -237,6 +239,7 @@ export async function PUT(request: Request) {
 
   const updates: {
     name?: string;
+    email?: string;
     profilePhotoUrl?: string | null;
     password?: string;
   } = {};
@@ -249,6 +252,17 @@ export async function PUT(request: Request) {
     updates.name = body.name.trim();
   }
 
+  if (typeof body.email === "string" && body.email.trim().length > 0) {
+    const normalizedEmail = body.email.trim().toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return NextResponse.json({ message: "Format email tidak valid." }, { status: 400 });
+    }
+
+    updates.email = normalizedEmail;
+  }
+
   if (body.profilePhotoUrl !== undefined && canWriteProfilePhotoUrl) {
     updates.profilePhotoUrl = body.profilePhotoUrl?.trim() || null;
   }
@@ -258,7 +272,18 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: "Kata sandi saat ini wajib diisi." }, { status: 400 });
     }
 
-    const isPasswordValid = await bcrypt.compare(body.currentPassword, user.password);
+    const isPasswordValidLocally = await bcrypt.compare(body.currentPassword, user.password);
+    let isPasswordValid = isPasswordValidLocally;
+
+    if (!isPasswordValid && session.email) {
+      try {
+        await verifyLoginWithCentralCommand(session.email, body.currentPassword, "SCHOOL_ERP");
+        isPasswordValid = true;
+      } catch {
+        isPasswordValid = false;
+      }
+    }
+
     if (!isPasswordValid) {
       return NextResponse.json({ message: "Kata sandi saat ini tidak sesuai." }, { status: 400 });
     }
@@ -281,6 +306,11 @@ export async function PUT(request: Request) {
     }
   } catch (error) {
     console.error("[settings.profile.PUT.user-update]", error);
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ message: "Email sudah digunakan akun lain." }, { status: 400 });
+    }
+
     return NextResponse.json(
       { message: `Penyimpanan profil gagal. ${formatPrismaError(error)}` },
       { status: 503 }

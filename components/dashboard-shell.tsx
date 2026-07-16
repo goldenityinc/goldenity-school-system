@@ -13,6 +13,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/" },
+  { label: "Design System", href: "/design-system" },
   { label: "Murid", href: "/students" },
   { label: "Akademik", href: "/academics", requiredModule: "ACADEMICS" },
   { label: "Tagihan", href: "/billing", requiredModule: "FINANCE" },

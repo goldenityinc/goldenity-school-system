@@ -16,6 +16,11 @@ const AssignStudentSchema = z.object({
   classroomId: z.string().min(1, "Kelas tujuan wajib dipilih")
 });
 
+const AssignStudentsBulkSchema = z.object({
+  classroomId: z.string().min(1, "Kelas tujuan wajib dipilih"),
+  studentIds: z.array(z.string().min(1)).min(1, "Pilih minimal satu siswa")
+});
+
 type ClassroomActionResult =
   | { success: true }
   | {
@@ -27,6 +32,7 @@ type ClassroomActionResult =
         semester?: string;
         homeroomTeacherId?: string;
         studentId?: string;
+        studentIds?: string;
         classroomId?: string;
       };
     };
@@ -157,6 +163,101 @@ export async function createClassroom(
   return { success: true };
 }
 
+export async function getClassroomById(classroomId: string, tenantId: string) {
+  const classroom = await prisma.classroom.findFirst({
+    where: {
+      id: classroomId,
+      tenantId
+    },
+    include: {
+      homeroomTeacher: {
+        select: {
+          id: true,
+          staffId: true,
+          fullName: true
+        }
+      },
+      students: {
+        where: { tenantId },
+        select: {
+          id: true,
+          studentNumber: true,
+          fullName: true,
+          gender: true,
+          isActive: true
+        },
+        orderBy: { fullName: "asc" }
+      },
+      courseOfferings: {
+        where: { tenantId },
+        include: {
+          course: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
+          lecturer: {
+            select: {
+              id: true,
+              staffId: true,
+              fullName: true
+            }
+          }
+        },
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
+      }
+    }
+  });
+
+  if (!classroom) {
+    return null;
+  }
+
+  return {
+    id: classroom.id,
+    name: classroom.name,
+    academicYear: classroom.academicYear,
+    semester: classroom.semester,
+    createdAt: classroom.createdAt.toISOString(),
+    homeroomTeacher: {
+      id: classroom.homeroomTeacher.id,
+      nip: classroom.homeroomTeacher.staffId,
+      name: classroom.homeroomTeacher.fullName
+    },
+    students: classroom.students.map((student) => ({
+      id: student.id,
+      nis: student.studentNumber,
+      name: student.fullName,
+      gender: student.gender,
+      isActive: student.isActive
+    })),
+    courseOfferings: classroom.courseOfferings.map((offering) => ({
+      id: offering.id,
+      term: offering.term,
+      academicYear: offering.academicYear,
+      section: offering.section,
+      dayOfWeek: offering.dayOfWeek,
+      startTime: offering.startTime,
+      endTime: offering.endTime,
+      room: offering.room,
+      course: {
+        id: offering.course.id,
+        code: offering.course.code,
+        name: offering.course.name
+      },
+      lecturer: offering.lecturer
+        ? {
+            id: offering.lecturer.id,
+            nip: offering.lecturer.staffId,
+            name: offering.lecturer.fullName
+          }
+        : null
+    }))
+  };
+}
+
 export async function assignStudentToClassroom(
   tenantId: string,
   studentId: string,
@@ -225,6 +326,83 @@ export async function assignStudentToClassroom(
 
   revalidatePath("/students");
   revalidatePath("/academics/classrooms");
+  revalidatePath(`/academics/classrooms/${cleaned.classroomId}`);
+
+  return { success: true };
+}
+
+export async function assignStudentsToClassroom(
+  classroomId: string,
+  studentIds: string[],
+  tenantId: string
+): Promise<ClassroomActionResult> {
+  const parsed = AssignStudentsBulkSchema.safeParse({ classroomId, studentIds });
+
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+
+    return {
+      success: false,
+      error: "Input penempatan siswa tidak valid",
+      errors: {
+        classroomId: fieldErrors.classroomId?.[0],
+        studentIds: fieldErrors.studentIds?.[0]
+      }
+    };
+  }
+
+  const cleaned = parsed.data;
+  const uniqueStudentIds = Array.from(new Set(cleaned.studentIds));
+
+  const classroom = await prisma.classroom.findFirst({
+    where: {
+      id: cleaned.classroomId,
+      tenantId
+    },
+    select: { id: true }
+  });
+
+  if (!classroom) {
+    return {
+      success: false,
+      error: "Kelas tidak ditemukan untuk tenant aktif",
+      errors: {
+        classroomId: "Kelas tidak valid"
+      }
+    };
+  }
+
+  const validStudents = await prisma.student.findMany({
+    where: {
+      tenantId,
+      id: { in: uniqueStudentIds }
+    },
+    select: { id: true }
+  });
+
+  if (validStudents.length !== uniqueStudentIds.length) {
+    return {
+      success: false,
+      error: "Sebagian siswa tidak valid untuk tenant aktif",
+      errors: {
+        studentIds: "Ada siswa yang tidak ditemukan"
+      }
+    };
+  }
+
+  await prisma.student.updateMany({
+    where: {
+      tenantId,
+      id: { in: uniqueStudentIds }
+    },
+    data: {
+      classroomId: cleaned.classroomId
+    }
+  });
+
+  revalidatePath("/students");
+  revalidatePath("/academics/classrooms");
+  revalidatePath(`/academics/classrooms/${cleaned.classroomId}`);
 
   return { success: true };
 }

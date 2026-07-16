@@ -94,6 +94,35 @@ export async function getStudents(tenantId: string, query?: string) {
   }
 }
 
+export async function getUnassignedStudents(tenantId: string) {
+  try {
+    const students = await prisma.student.findMany({
+      where: {
+        tenantId,
+        classroomId: null,
+        isActive: true
+      },
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        studentNumber: true,
+        fullName: true,
+        gender: true
+      }
+    });
+
+    return students.map((student) => ({
+      id: student.id,
+      nis: student.studentNumber,
+      name: student.fullName,
+      gender: student.gender
+    }));
+  } catch (error) {
+    console.error("[students.getUnassignedStudents]", error);
+    return [];
+  }
+}
+
 export async function getStudentById(tenantId: string, studentId: string) {
   try {
     const student = await prisma.student.findFirst({

@@ -48,6 +48,7 @@ export default function SettingsPage() {
   const [readOnlyMode, setReadOnlyMode] = useState(false);
   const [profile, setProfile] = useState<SettingsProfile | null>(null);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function SettingsPage() {
 
         setProfile(payload.profile);
         setName(payload.profile.name ?? "");
+        setEmail(payload.profile.email ?? "");
         setProfilePhotoUrl(payload.profile.profilePhotoUrl ?? null);
         setTenantLogoUrl(payload.profile.tenantLogoUrl ?? null);
         setReadOnlyMode(Boolean(payload.readOnly));
@@ -137,6 +139,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           name,
+          email,
           profilePhotoUrl,
           currentPassword: currentPassword || undefined,
           newPassword: newPassword || undefined,
@@ -153,6 +156,7 @@ export default function SettingsPage() {
       setSuccessMessage("Pengaturan berhasil disimpan.");
       setCurrentPassword("");
       setNewPassword("");
+      setProfile((previous) => (previous ? { ...previous, name, email } : previous));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Gagal menyimpan pengaturan.");
     } finally {
@@ -168,7 +172,7 @@ export default function SettingsPage() {
     <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Pengaturan Akun</h1>
-        <p className="mt-1 text-sm text-slate-600">Ubah nama, foto profil, kata sandi, dan logo tenant.</p>
+        <p className="mt-1 text-sm text-slate-600">Ubah nama, email, foto profil, kata sandi, dan logo tenant.</p>
       </header>
 
       {errorMessage ? <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</div> : null}
@@ -198,7 +202,13 @@ export default function SettingsPage() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-              <input value={profile?.email ?? ""} disabled className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-slate-500" />
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
+                placeholder="nama@email.com"
+              />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">

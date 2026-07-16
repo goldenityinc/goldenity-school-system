@@ -32,7 +32,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-1 rounded-md font-semibold transition ${variantClassMap[variant]} ${sizeClassMap[size]} disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center justify-center gap-1 rounded-md font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 ${variantClassMap[variant]} ${sizeClassMap[size]} disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       {...props}
     />
   );

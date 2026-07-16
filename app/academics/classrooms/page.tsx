@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
 import { useTenant } from "../../../components/tenant-context";
@@ -47,7 +48,7 @@ type ClassroomFormErrors = {
 
 function ClassroomSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
           <div className="mb-3 h-5 animate-pulse rounded bg-slate-100" />
@@ -207,9 +208,9 @@ export default function ClassroomsPage() {
           Belum ada rombongan belajar. Klik + Buat Kelas Baru untuk mulai.
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {classrooms.map((classroom) => (
-            <article key={classroom.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
+            <article key={classroom.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
               <h2 className="text-lg font-semibold text-slate-900">{classroom.name}</h2>
               <p className="mt-1 text-sm text-slate-600">
                 {classroom.academicYear} • Semester {classroom.semester}
@@ -233,6 +234,15 @@ export default function ClassroomsPage() {
                   <dd className="font-semibold text-slate-900">{classroom.courseOfferings.length}</dd>
                 </div>
               </dl>
+
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                <Link
+                  href={`/academics/classrooms/${classroom.id}`}
+                  className="inline-flex h-9 w-full items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Lihat Detail
+                </Link>
+              </div>
             </article>
           ))}
         </div>
