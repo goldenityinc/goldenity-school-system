@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentSession } from "../../../lib/utils/jwt";
 
 const DEFAULT_BACKEND_URL =
-  process.env.CLASSROOM_API_BASE_URL ?? process.env.EMPLOYEE_API_BASE_URL ?? process.env.CENTRAL_COMMAND_URL ?? process.env.GOLDENITY_ADMIN_CORE_API_URL ?? "https://goldenity-admin-core-api.vercel.app";
+  process.env.CAMPUS_API_URL ?? process.env.CLASSROOM_API_BASE_URL ?? process.env.EMPLOYEE_API_BASE_URL ?? process.env.GOLDENITY_ADMIN_CORE_API_URL ?? "https://goldenity-campus-website.vercel.app";
 
 function buildBackendUrl(path: string) {
   return `${DEFAULT_BACKEND_URL.replace(/\/$/, "")}${path}`;
