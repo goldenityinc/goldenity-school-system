@@ -10,25 +10,31 @@ function buildBackendUrl(path: string) {
   return `${DEFAULT_BACKEND_URL.replace(/\/$/, "")}${path}`;
 }
 
-async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>) {
+async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_TOKEN_COOKIE_NAME)?.value;
+  const authorizationHeader = request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "";
 
   if (!token || !session?.tenantId) {
     return null;
   }
 
-  return {
-    Authorization: `Bearer ${token}`,
+  const backendHeaders = {
+    Authorization: authorizationHeader || `Bearer ${token}`,
     "Content-Type": "application/json",
-    "x-tenant-id": session.tenantId,
-    "x-user-id": session.userId,
-    "x-role": session.role
+    "x-tenant-id": session?.tenantId || session?.tenant_id || session?.user?.tenantId || "MISSING_TENANT",
+    "x-user-id": session?.userId || session?.id || session?.user?.id || "MISSING_USER",
+    "x-role": session?.role || session?.user?.role || "admin"
   };
+
+  console.log("Parsed Session:", session);
+  console.log("Outgoing Headers:", backendHeaders);
+
+  return backendHeaders;
 }
 
-async function forwardJsonResponse(path: string, init: RequestInit, session: Awaited<ReturnType<typeof getCurrentSession>>) {
-  const headers = await getForwardHeaders(session);
+async function forwardJsonResponse(path: string, init: RequestInit, session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
+  const headers = await getForwardHeaders(session, request);
 
   if (!headers) {
     return NextResponse.json({ success: false, message: "Token autentikasi tidak ditemukan." }, { status: 401 });
@@ -54,14 +60,14 @@ async function forwardJsonResponse(path: string, init: RequestInit, session: Awa
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getCurrentSession();
 
   if (!session?.tenantId) {
     return NextResponse.json({ success: false, message: "Sesi tenant tidak valid." }, { status: 401 });
   }
 
-  return forwardJsonResponse("/api/employees", { method: "GET" }, session);
+  return forwardJsonResponse("/api/employees", { method: "GET" }, session, request);
 }
 
 export async function POST(request: Request) {
@@ -82,6 +88,7 @@ export async function POST(request: Request) {
         "Content-Type": request.headers.get("content-type") ?? "application/json"
       }
     },
-    session
+    session,
+    request
   );
 }

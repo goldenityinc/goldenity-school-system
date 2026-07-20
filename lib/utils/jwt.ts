@@ -8,6 +8,14 @@ export type JwtGatewaySession = {
   tenantId: string;
   role: string;
   allowedSolutions: string[];
+  id?: string;
+  tenant_id?: string;
+  user?: {
+    id?: string;
+    tenantId?: string;
+    tenant_id?: string;
+    role?: string;
+  };
   email?: string;
   name?: string;
   tenantName?: string;
@@ -21,6 +29,13 @@ type JwtPayloadRaw = {
   userId?: string;
   sub?: string;
   id?: string;
+  user?: {
+    id?: string;
+    userId?: string;
+    tenantId?: string;
+    tenant_id?: string;
+    role?: string;
+  };
   username?: string;
   fullName?: string;
   tenantId?: string;
@@ -93,9 +108,9 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
   const payloadText = decodeBase64Url(parts[1]);
   const payload = JSON.parse(payloadText) as JwtPayloadRaw;
 
-  const userId = payload.userId ?? payload.sub ?? payload.id;
-  const tenantId = payload.tenantId ?? payload.tenant_id ?? payload.tenant?.id;
-  const role = payload.role ?? payload.userRole ?? (Array.isArray(payload.roles) ? payload.roles[0] : undefined);
+  const userId = payload.userId ?? payload.sub ?? payload.id ?? payload.user?.id ?? payload.user?.userId;
+  const tenantId = payload.tenantId ?? payload.tenant_id ?? payload.tenant?.id ?? payload.user?.tenantId ?? payload.user?.tenant_id;
+  const role = payload.role ?? payload.userRole ?? payload.user?.role ?? (Array.isArray(payload.roles) ? payload.roles[0] : undefined);
   const allowedSolutionsCandidates = [
     normalizeStringArray(payload.allowedSolutions),
     normalizeStringArray(payload.portals),
@@ -117,8 +132,16 @@ export function decodeJwtPayload(token: string): JwtGatewaySession {
   return {
     userId,
     tenantId,
+    id: userId,
+    tenant_id: tenantId,
     role: role ?? "TENANT_ADMIN",
     allowedSolutions,
+    user: {
+      id: userId,
+      tenantId,
+      tenant_id: tenantId,
+      role: role ?? "TENANT_ADMIN"
+    },
     email: payload.email,
     name: payload.name ?? payload.fullName ?? payload.username ?? payload.email ?? undefined,
     tenantName,
@@ -150,7 +173,13 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
       tenantName: session.tenantName ?? tenantLabelFromCookie ?? undefined,
       image: session.image ?? null,
       profilePhotoUrl: session.profilePhotoUrl ?? null,
-      tenantLogoUrl: session.tenantLogoUrl ?? null
+      tenantLogoUrl: session.tenantLogoUrl ?? null,
+      user: session.user ?? {
+        id: session.userId,
+        tenantId: session.tenantId,
+        tenant_id: session.tenantId,
+        role: session.role
+      }
     };
   } catch {
     return null;
