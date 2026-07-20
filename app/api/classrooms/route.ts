@@ -10,23 +10,25 @@ function buildBackendUrl(path: string) {
   return `${DEFAULT_BACKEND_URL.replace(/\/$/, "")}${path}`;
 }
 
-async function getForwardHeaders(sessionTenantId: string) {
+async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>) {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_TOKEN_COOKIE_NAME)?.value;
 
-  if (!token) {
+  if (!token || !session?.tenantId) {
     return null;
   }
 
   return {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
-    "X-Tenant-Id": sessionTenantId
+    "x-tenant-id": session.tenantId,
+    "x-user-id": session.userId,
+    "x-role": session.role
   };
 }
 
-async function forwardJsonResponse(path: string, init: RequestInit, tenantId: string) {
-  const headers = await getForwardHeaders(tenantId);
+async function forwardJsonResponse(path: string, init: RequestInit, session: Awaited<ReturnType<typeof getCurrentSession>>) {
+  const headers = await getForwardHeaders(session);
 
   if (!headers) {
     return NextResponse.json({ success: false, message: "Token autentikasi tidak ditemukan." }, { status: 401 });
@@ -59,7 +61,7 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "Sesi tenant tidak valid." }, { status: 401 });
   }
 
-  return forwardJsonResponse("/api/classrooms", { method: "GET" }, session.tenantId);
+  return forwardJsonResponse("/api/classrooms", { method: "GET" }, session);
 }
 
 export async function POST(request: Request) {
@@ -80,6 +82,6 @@ export async function POST(request: Request) {
         "Content-Type": request.headers.get("content-type") ?? "application/json"
       }
     },
-    session.tenantId
+    session
   );
 }
