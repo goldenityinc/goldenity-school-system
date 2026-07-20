@@ -11,12 +11,24 @@ type NavItem = {
   requiredModule?: string;
 };
 
+type AcademicsSubItem = {
+  label: string;
+  href: string;
+};
+
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/" },
   { label: "Murid", href: "/students" },
-  { label: "Akademik", href: "/academics", requiredModule: "ACADEMICS" },
+  { label: "Karyawan", href: "/hr/employees", requiredModule: "SCHOOL_ERP" },
   { label: "Tagihan", href: "/billing", requiredModule: "FINANCE" },
   { label: "Pengaturan", href: "/settings" }
+];
+
+const academicsSubItems: AcademicsSubItem[] = [
+  { label: "Manajemen Kelas", href: "/academics/classrooms" },
+  { label: "Kurikulum & Mapel", href: "/academics/curriculum" },
+  { label: "Jadwal Pelajaran", href: "/academics/schedules" },
+  { label: "Penilaian (Nilai)", href: "/academics/grades" }
 ];
 
 function roleLabel(role?: string) {
@@ -30,6 +42,7 @@ function roleLabel(role?: string) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isAcademicsExpanded, setIsAcademicsExpanded] = useState(false);
   const [session, setSession] = useState<{
     user?: {
       role?: string;
@@ -122,6 +135,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return activeModules.includes(item.requiredModule);
   });
 
+  const hasAcademicsAccess = activeModules.includes("SCHOOL_ERP") || activeModules.includes("ACADEMICS");
+  const isAcademicsActive = academicsSubItems.some((item) => pathname.startsWith(item.href));
+  const academicsIsOpen = isAcademicsExpanded || isAcademicsActive;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen flex-col md:flex-row">
@@ -150,6 +167,42 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+
+            {hasAcademicsAccess ? (
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setIsAcademicsExpanded((previous) => !previous)}
+                  aria-expanded={academicsIsOpen}
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 font-medium transition ${
+                    isAcademicsActive ? "bg-yellow-500 text-slate-900" : "text-slate-300 hover:bg-slate-800"
+                  }`}
+                >
+                  <span>Akademik</span>
+                  <span className={`text-xs transition ${academicsIsOpen ? "rotate-180" : ""}`}>⌄</span>
+                </button>
+
+                {academicsIsOpen ? (
+                  <div className="ml-3 space-y-1 border-l border-slate-700 pl-3">
+                    {academicsSubItems.map((subItem) => {
+                      const isSubActive = pathname.startsWith(subItem.href);
+
+                      return (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          className={`block rounded-md px-3 py-2 text-sm transition ${
+                            isSubActive ? "bg-yellow-500 text-slate-900" : "text-slate-300 hover:bg-slate-800"
+                          }`}
+                        >
+                          {subItem.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </nav>
         </aside>
 

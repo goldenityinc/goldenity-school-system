@@ -1,4 +1,3 @@
-import prisma from "../prisma";
 import { cookies } from "next/headers";
 import { AUTH_TOKEN_COOKIE_NAME } from "../api/auth";
 
@@ -145,42 +144,13 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
         return null;
       }
     }
-
-    let localUser: { name: string; profilePhotoUrl: string | null } | null = null;
-    let tenantBranding: { logoUrl: string | null } | null = null;
-
-    try {
-      localUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ id: session.userId }, { email: session.email ?? undefined }]
-        },
-        select: {
-          name: true,
-          profilePhotoUrl: true
-        }
-      });
-
-      tenantBranding = session.tenantId
-        ? await prisma.tenantBranding.findUnique({
-            where: {
-              tenantId: session.tenantId
-            },
-            select: {
-              logoUrl: true
-            }
-          })
-        : null;
-    } catch (error) {
-      console.error("SESSION_PROFILE_ENRICHMENT_SKIPPED", error);
-    }
-
     return {
       ...session,
-      name: localUser?.name ?? session.name,
+      name: session.name,
       tenantName: session.tenantName ?? tenantLabelFromCookie ?? undefined,
-      image: localUser?.profilePhotoUrl ?? session.image ?? null,
-      profilePhotoUrl: localUser?.profilePhotoUrl ?? session.profilePhotoUrl ?? null,
-      tenantLogoUrl: tenantBranding?.logoUrl ?? session.tenantLogoUrl ?? null
+      image: session.image ?? null,
+      profilePhotoUrl: session.profilePhotoUrl ?? null,
+      tenantLogoUrl: session.tenantLogoUrl ?? null
     };
   } catch {
     return null;
