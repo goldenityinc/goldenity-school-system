@@ -1,6 +1,4 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AUTH_TOKEN_COOKIE_NAME } from "../../../lib/api/auth";
 import { getCurrentSession } from "../../../lib/utils/jwt";
 
 const DEFAULT_BACKEND_URL =
@@ -11,16 +9,14 @@ function buildBackendUrl(path: string) {
 }
 
 async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_TOKEN_COOKIE_NAME)?.value;
   const authorizationHeader = request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "";
 
-  if (!token || !session?.tenantId) {
+  if (!session?.tenantId) {
     return null;
   }
 
   const backendHeaders = {
-    Authorization: authorizationHeader || `Bearer ${token}`,
+    Authorization: authorizationHeader || "",
     "Content-Type": "application/json",
     "x-tenant-id": session?.tenantId || session?.tenant_id || session?.user?.tenantId || "MISSING_TENANT",
     "x-user-id": session?.userId || session?.id || session?.user?.id || "MISSING_USER",
