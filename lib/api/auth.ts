@@ -38,11 +38,18 @@ type AdminCoreLoginResponse = {
   };
 };
 
-function resolveAdminCoreBaseUrl() {
-  const baseUrl =
-    process.env.CENTRAL_COMMAND_URL ?? process.env.GOLDENITY_ADMIN_CORE_API_URL ?? "https://goldenity-admin-core-api.vercel.app";
+function resolveAdminCoreBaseUrls() {
+  const candidates = [
+    process.env.CENTRAL_COMMAND_URL,
+    process.env.GOLDENITY_ADMIN_CORE_API_URL,
+    "https://goldenity-admin-core-api.vercel.app"
+  ];
 
-  return baseUrl.replace(/\/$/, "");
+  const normalized = candidates
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.replace(/\/$/, ""));
+
+  return Array.from(new Set(normalized));
 }
 
 function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {
@@ -71,7 +78,7 @@ function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {
 }
 
 export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise<string> {
-  const baseUrl = resolveAdminCoreBaseUrl();
+  const baseUrls = resolveAdminCoreBaseUrls();
   const tenantSlug = payload.tenantSlug?.trim() || process.env.CENTRAL_COMMAND_TENANT_SLUG || process.env.NEXT_PUBLIC_TENANT_SLUG || undefined;
   const loginIdentifier = payload.email.trim();
   const loginPayload = {
@@ -88,39 +95,57 @@ export async function loginViaAdminCore(payload: AdminCoreLoginPayload): Promise
   console.log("LOGIN PAYLOAD:", loginPayload);
   const loginEndpoints = ["/auth/login", "/api/v1/auth/login"];
   let response: Response | null = null;
+  let hasNetworkError = false;
+  let hasTimeoutError = false;
 
-  for (const endpoint of loginEndpoints) {
-    let attempt: Response;
+  for (const baseUrl of baseUrls) {
+    for (const endpoint of loginEndpoints) {
+      let attempt: Response;
 
-    try {
-      attempt = await fetch(`${baseUrl}${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(loginPayload),
-        cache: "no-store",
-        signal: AbortSignal.timeout(15000)
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "TimeoutError") {
-        throw new AdminCoreAuthError("Request ke Admin Core timeout. Silakan coba lagi.", 504);
+      try {
+        attempt = await fetch(`${baseUrl}${endpoint}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(loginPayload),
+          cache: "no-store",
+          signal: AbortSignal.timeout(15000)
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+          hasTimeoutError = true;
+          continue;
+        }
+
+        hasNetworkError = true;
+        continue;
       }
 
+      response = attempt;
+
+      // Try fallback endpoint only when route is not available.
+      if (attempt.status === 404 || attempt.status === 405) {
+        continue;
+      }
+
+      break;
+    }
+
+    if (response && response.status !== 404 && response.status !== 405) {
+      break;
+    }
+  }
+
+  if (!response || response.status === 404 || response.status === 405) {
+    if (hasTimeoutError) {
+      throw new AdminCoreAuthError("Request ke Admin Core timeout. Silakan coba lagi.", 504);
+    }
+
+    if (hasNetworkError) {
       throw new AdminCoreAuthError("Gagal terhubung ke Admin Core. Periksa koneksi layanan backend.", 503);
     }
 
-    response = attempt;
-
-    // Try fallback endpoint only when route is not available.
-    if ((attempt.status === 404 || attempt.status === 405) && endpoint !== loginEndpoints[loginEndpoints.length - 1]) {
-      continue;
-    }
-
-    break;
-  }
-
-  if (!response) {
     throw new AdminCoreAuthError("Gagal menghubungi layanan autentikasi Admin Core.", 503);
   }
 

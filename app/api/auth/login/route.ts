@@ -60,13 +60,21 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const isSecure = process.env.NODE_ENV === "production";
 
+    const loginIdentifier = body.email.trim();
+    const tenantSlug = body.tenantSlug.trim();
     let localUser: Awaited<ReturnType<typeof prisma.user.findFirst>> | null = null;
 
     try {
       localUser = await prisma.user.findFirst({
         where: {
-          email: body.email,
-          OR: [{ tenantSlug: body.tenantSlug }, { tenantId: body.tenantSlug }]
+          AND: [
+            {
+              OR: [{ tenantSlug }, { tenantId: tenantSlug }]
+            },
+            {
+              OR: [{ email: loginIdentifier }, { name: loginIdentifier }]
+            }
+          ]
         }
       });
     } catch (error) {
