@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "../../../../lib/prisma";
 import { AUTH_TOKEN_COOKIE_NAME, AdminCoreAuthError, loginViaAdminCore } from "../../../../lib/api/auth";
+import { verifyLoginWithCentralCommand } from "../../../../lib/services/central-command";
 import {
   AUTH_TENANT_LABEL_COOKIE_NAME,
   createGatewayToken,
@@ -85,9 +86,11 @@ export async function POST(request: Request) {
       const isPasswordValid = await bcrypt.compare(body.password, localUser.password);
 
       if (isPasswordValid) {
+        const tenantIdForToken = localUser.tenantId ?? localUser.tenantSlug ?? tenantSlug;
+
         const token = createGatewayToken({
           userId: localUser.id,
-          tenantId: localUser.tenantId ?? localUser.tenantSlug ?? "",
+          tenantId: tenantIdForToken,
           role: localUser.role,
           allowedSolutions: ["SCHOOL_ERP"],
           email: localUser.email,
@@ -115,7 +118,7 @@ export async function POST(request: Request) {
           success: true,
           user: {
             userId: localUser.id,
-            tenantId: localUser.tenantId ?? null,
+            tenantId: tenantIdForToken,
             role: localUser.role,
             allowedSolutions: ["SCHOOL_ERP"],
             name: localUser.name,
@@ -177,11 +180,58 @@ export async function POST(request: Request) {
         maxAge: typeof session?.exp === "number" ? Math.max(session.exp - Math.floor(Date.now() / 1000), 0) : 60 * 60 * 8
       });
     } catch (loginError) {
-      if (loginError instanceof AdminCoreAuthError) {
+      try {
+        const verifiedUser = await verifyLoginWithCentralCommand({
+          email: loginIdentifier,
+          password: body.password,
+          requestedSolution: "SCHOOL_ERP",
+          tenantSlug
+        });
+
+        const nowInSeconds = Math.floor(Date.now() / 1000);
+        token = createGatewayToken({
+          userId: verifiedUser.id,
+          tenantId: verifiedUser.tenantId ?? tenantSlug,
+          role: verifiedUser.role,
+          allowedSolutions: verifiedUser.activeModules.length > 0 ? verifiedUser.activeModules : ["SCHOOL_ERP"],
+          email: verifiedUser.email,
+          name: verifiedUser.name,
+          tenantName: tenantSlug,
+          exp: nowInSeconds + 60 * 60 * 8
+        });
+        session = decodeJwtPayload(token);
+
+        if (session?.email && session?.tenantId) {
+          await syncLocalUserFromLogin({
+            email: session.email,
+            password: body.password,
+            tenantSlug,
+            session
+          });
+        }
+
+        cookieStore.set(AUTH_TOKEN_COOKIE_NAME, token, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: isSecure,
+          path: "/",
+          maxAge: 60 * 60 * 8
+        });
+
+        cookieStore.set(AUTH_TENANT_LABEL_COOKIE_NAME, tenantSlug, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: isSecure,
+          path: "/",
+          maxAge: 60 * 60 * 8
+        });
+      } catch {
+        if (loginError instanceof AdminCoreAuthError) {
+          throw loginError;
+        }
+
         throw loginError;
       }
-
-      throw loginError;
     }
 
     return NextResponse.json({

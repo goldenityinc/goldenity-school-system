@@ -13,12 +13,33 @@ export type CentralCommandAuthResponse = {
   user: CentralCommandUser;
 };
 
+type VerifyPayload = {
+  email: string;
+  password: string;
+  requestedSolution?: string;
+  tenantSlug?: string;
+};
+
 type CentralCommandErrorResponse = {
   message?: string;
 };
 
 const DEFAULT_SCHOOL_SOLUTION = "SCHOOL_ERP";
 const DEFAULT_ADMIN_CORE_API_URL = "https://goldenity-admin-core-api.vercel.app";
+
+function resolveAdminCoreBaseUrls() {
+  const values = [
+    process.env.CENTRAL_COMMAND_URL,
+    process.env.GOLDENITY_ADMIN_CORE_API_URL,
+    DEFAULT_ADMIN_CORE_API_URL
+  ];
+
+  const normalized = values
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.replace(/\/$/, ""));
+
+  return Array.from(new Set(normalized));
+}
 
 async function readErrorMessage(response: Response) {
   try {
@@ -30,41 +51,58 @@ async function readErrorMessage(response: Response) {
 }
 
 export async function verifyLoginWithCentralCommand(
-  email: string,
-  password: string,
-  requestedSolution?: string
+  payload: VerifyPayload
 ): Promise<CentralCommandUser> {
-  const baseUrl =
-    process.env.CENTRAL_COMMAND_URL ?? process.env.GOLDENITY_ADMIN_CORE_API_URL ?? DEFAULT_ADMIN_CORE_API_URL;
-  const solution = requestedSolution ?? process.env.CENTRAL_COMMAND_SOLUTION ?? DEFAULT_SCHOOL_SOLUTION;
+  const solution = payload.requestedSolution ?? process.env.CENTRAL_COMMAND_SOLUTION ?? DEFAULT_SCHOOL_SOLUTION;
+  const baseUrls = resolveAdminCoreBaseUrls();
+  let lastErrorMessage = "Gagal terhubung ke layanan verifikasi login.";
 
-  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+  for (const baseUrl of baseUrls) {
+    let response: Response;
 
-  const response = await fetch(`${normalizedBaseUrl}/api/v1/auth/verify`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email, password, solution }),
-    cache: "no-store"
-  });
+    try {
+      response = await fetch(`${baseUrl}/api/v1/auth/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: payload.email,
+          username: payload.email,
+          password: payload.password,
+          solution,
+          tenantSlug: payload.tenantSlug,
+          tenant_slug: payload.tenantSlug,
+          kode_perusahaan: payload.tenantSlug
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000)
+      });
+    } catch {
+      continue;
+    }
 
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
+    if (!response.ok) {
+      lastErrorMessage = await readErrorMessage(response);
+      continue;
+    }
+
+    const data = (await response.json()) as CentralCommandAuthResponse;
+
+    if (!data?.user) {
+      lastErrorMessage = "Invalid auth response from Central Command.";
+      continue;
+    }
+
+    return {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
+      tenantId: data.user.tenantId ?? null,
+      activeModules: Array.isArray(data.user.activeModules) ? data.user.activeModules : []
+    };
   }
 
-  const data = (await response.json()) as CentralCommandAuthResponse;
-
-  if (!data?.user) {
-    throw new Error("Invalid auth response from Central Command.");
-  }
-
-  return {
-    id: data.user.id,
-    name: data.user.name,
-    email: data.user.email,
-    role: data.user.role,
-    tenantId: data.user.tenantId ?? null,
-    activeModules: Array.isArray(data.user.activeModules) ? data.user.activeModules : []
-  };
+  throw new Error(lastErrorMessage);
 }
