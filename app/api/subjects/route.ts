@@ -8,20 +8,42 @@ function buildBackendUrl(path: string) {
   return `${DEFAULT_BACKEND_URL.replace(/\/$/, "")}${path}`;
 }
 
-async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
+function resolveForwardContext(session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
   const requestAuthorizationHeader = request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "";
   const sessionTokenAuthorizationHeader = session?.token ? `Bearer ${session.token}` : "";
+  const tenantIdFromHeader = request.headers.get("x-tenant-id") ?? request.headers.get("X-Tenant-Id") ?? "";
+  const userIdFromHeader = request.headers.get("x-user-id") ?? request.headers.get("X-User-Id") ?? "";
+  const roleFromHeader = request.headers.get("x-role") ?? request.headers.get("X-Role") ?? "";
 
-  if (!session?.tenantId) {
+  const tenantId = session?.tenantId || session?.tenant_id || session?.user?.tenantId || tenantIdFromHeader;
+  const userId = session?.userId || session?.id || session?.user?.id || userIdFromHeader || "MISSING_USER";
+  const role = session?.role || session?.user?.role || roleFromHeader || "admin";
+
+  if (!tenantId) {
+    return null;
+  }
+
+  return {
+    authorization: requestAuthorizationHeader || sessionTokenAuthorizationHeader,
+    tenantId,
+    userId,
+    role
+  };
+}
+
+async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
+  const context = resolveForwardContext(session, request);
+
+  if (!context) {
     return null;
   }
 
   const backendHeaders = {
-    Authorization: requestAuthorizationHeader || sessionTokenAuthorizationHeader,
+    Authorization: context.authorization,
     "Content-Type": "application/json",
-    "x-tenant-id": session?.tenantId || session?.tenant_id || session?.user?.tenantId || "MISSING_TENANT",
-    "x-user-id": session?.userId || session?.id || session?.user?.id || "MISSING_USER",
-    "x-role": session?.role || session?.user?.role || "admin"
+    "x-tenant-id": context.tenantId,
+    "x-user-id": context.userId,
+    "x-role": context.role
   };
 
   console.log("Parsed Session:", session);
@@ -59,8 +81,9 @@ async function forwardJsonResponse(path: string, init: RequestInit, session: Awa
 
 export async function GET(request: Request) {
   const session = await getCurrentSession();
+  const context = resolveForwardContext(session, request);
 
-  if (!session?.tenantId) {
+  if (!context) {
     return NextResponse.json({ success: false, message: "Sesi tenant tidak valid." }, { status: 401 });
   }
 
@@ -69,8 +92,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await getCurrentSession();
+  const context = resolveForwardContext(session, request);
 
-  if (!session?.tenantId) {
+  if (!context) {
     return NextResponse.json({ success: false, message: "Sesi tenant tidak valid." }, { status: 401 });
   }
 
