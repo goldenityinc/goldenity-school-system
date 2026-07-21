@@ -34,10 +34,6 @@ type EmployeeRow = {
   role?: string | null;
 };
 
-type ClassroomResponse = ClassroomRow[] | { data?: ClassroomRow[] } | { classrooms?: ClassroomRow[] } | null;
-
-type EmployeeResponse = EmployeeRow[] | { data?: EmployeeRow[] } | null;
-
 type ClassroomFormState = {
   code: string;
   name: string;
@@ -148,7 +144,13 @@ export default function ClassroomsPage() {
     }
 
     try {
-      const rows = (await getClassrooms()) as ClassroomRow[];
+      const result = await getClassrooms();
+
+      if (!result.success) {
+        throw new Error(result.error || "Gagal memuat data kelas.");
+      }
+
+      const rows = result.data as ClassroomRow[];
       setClassrooms(rows);
       return rows;
     } catch (error) {
@@ -170,7 +172,13 @@ export default function ClassroomsPage() {
     }
 
     try {
-      const rows = (await getEmployees()) as EmployeeRow[];
+      const result = await getEmployees();
+
+      if (!result.success) {
+        throw new Error(result.error || "Gagal memuat data guru.");
+      }
+
+      const rows = result.data as EmployeeRow[];
       setEmployees(rows);
       return rows;
     } catch (error) {
@@ -258,13 +266,18 @@ export default function ClassroomsPage() {
     try {
       setPageError(null);
 
-      await createClassroom({
+      const submitResult = await createClassroom({
         code: formState.code.trim(),
         name: formState.name.trim(),
         capacity: Number(formState.capacity),
         academicYear: formState.academicYear.trim(),
         homeroomTeacherId: formState.homeroomTeacherId
       });
+
+      if (!submitResult.success) {
+        setFormErrors((submitResult.errors as FormErrors | undefined) ?? {});
+        throw new Error(submitResult.error || submitResult.message || "Gagal menyimpan kelas.");
+      }
 
       await loadClassrooms();
       setToast({ type: "success", message: "Kelas berhasil ditambahkan." });

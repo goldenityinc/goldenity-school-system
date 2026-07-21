@@ -15,8 +15,6 @@ type SubjectRow = {
   minimumPassingGrade?: number | string | null;
 };
 
-type SubjectResponse = SubjectRow[] | { data?: SubjectRow[] } | { subjects?: SubjectRow[] } | null;
-
 type SubjectFormState = {
   code: string;
   name: string;
@@ -122,7 +120,13 @@ export default function CurriculumPage() {
           setIsLoading(true);
           setPageError(null);
 
-          const rows = (await getSubjects()) as SubjectRow[];
+          const result = await getSubjects();
+
+          if (!result.success) {
+            throw new Error(result.error || "Gagal memuat data mapel.");
+          }
+
+          const rows = result.data as SubjectRow[];
           setSubjects(rows);
         } catch (error) {
           setPageError(error instanceof Error ? error.message : "Gagal memuat data mapel.");
@@ -179,7 +183,13 @@ export default function CurriculumPage() {
       return [] as SubjectRow[];
     }
 
-    return (await getSubjects()) as SubjectRow[];
+    const result = await getSubjects();
+
+    if (!result.success) {
+      throw new Error(result.error || "Gagal memuat data mapel.");
+    }
+
+    return result.data as SubjectRow[];
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -199,12 +209,17 @@ export default function CurriculumPage() {
     try {
       setPageError(null);
 
-      await createSubject({
+      const submitResult = await createSubject({
         code: formState.code.trim(),
         name: formState.name.trim(),
         category: formState.category,
         kkm: Number(formState.kkm)
       });
+
+      if (!submitResult.success) {
+        setFormErrors((submitResult.errors as FormErrors | undefined) ?? {});
+        throw new Error(submitResult.error || submitResult.message || "Gagal menyimpan mapel.");
+      }
 
       const rows = await refreshSubjects();
       setSubjects(rows);

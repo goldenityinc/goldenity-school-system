@@ -148,7 +148,13 @@ export default function EmployeeManagementPage() {
       try {
         setIsLoading(true);
         setPageError(null);
-        const rows = (await getEmployees()) as EmployeeRow[];
+        const result = await getEmployees();
+
+        if (!result.success) {
+          throw new Error(result.error || "Gagal memuat data karyawan.");
+        }
+
+        const rows = result.data as EmployeeRow[];
 
         if (!isActive) {
           return;
@@ -204,7 +210,13 @@ export default function EmployeeManagementPage() {
 
   function refreshEmployees(tenantId: string) {
     void tenantId;
-    return getEmployees().then((rows) => rows as EmployeeRow[]);
+    return getEmployees().then((result) => {
+      if (!result.success) {
+        throw new Error(result.error || "Gagal memuat data karyawan.");
+      }
+
+      return result.data as EmployeeRow[];
+    });
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -223,7 +235,7 @@ export default function EmployeeManagementPage() {
       try {
         setPageError(null);
 
-        await createEmployee({
+        const submitResult = await createEmployee({
           name: formState.name.trim(),
           nik: formState.nik.trim(),
           nuptk: formState.nuptk.trim() || null,
@@ -233,6 +245,11 @@ export default function EmployeeManagementPage() {
           role: formState.role,
           status: formState.status
         });
+
+        if (!submitResult.success) {
+          setFormErrors((submitResult.errors as FormErrors | undefined) ?? {});
+          throw new Error(submitResult.error || submitResult.message || "Gagal menyimpan karyawan.");
+        }
 
         const rows = await refreshEmployees(selectedTenant);
         setEmployees(rows);
