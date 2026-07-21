@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTenant } from "../../../components/tenant-context";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
+import { createSubject, getSubjects } from "../../actions/academic-gateway";
 
 type SubjectRow = {
   id: string;
@@ -121,21 +122,7 @@ export default function CurriculumPage() {
           setIsLoading(true);
           setPageError(null);
 
-          const response = await fetch("/api/subjects", {
-            method: "GET",
-            headers: {
-              "X-Tenant-Id": selectedTenant
-            },
-            cache: "no-store"
-          });
-
-          const payload = (await response.json().catch(() => null)) as SubjectResponse;
-
-          if (!response.ok) {
-            throw new Error((payload as { message?: string } | null)?.message ?? "Gagal memuat data mapel.");
-          }
-
-          const rows = Array.isArray(payload) ? payload : payload?.data ?? payload?.subjects ?? [];
+          const rows = (await getSubjects()) as SubjectRow[];
           setSubjects(rows);
         } catch (error) {
           setPageError(error instanceof Error ? error.message : "Gagal memuat data mapel.");
@@ -192,21 +179,7 @@ export default function CurriculumPage() {
       return [] as SubjectRow[];
     }
 
-    const response = await fetch("/api/subjects", {
-      method: "GET",
-      headers: {
-        "X-Tenant-Id": selectedTenant
-      },
-      cache: "no-store"
-    });
-
-    const payload = (await response.json().catch(() => null)) as SubjectResponse;
-
-    if (!response.ok) {
-      throw new Error((payload as { message?: string } | null)?.message ?? "Gagal memuat data mapel.");
-    }
-
-    return Array.isArray(payload) ? payload : payload?.data ?? payload?.subjects ?? [];
+    return (await getSubjects()) as SubjectRow[];
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -226,26 +199,12 @@ export default function CurriculumPage() {
     try {
       setPageError(null);
 
-      const response = await fetch("/api/subjects", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Tenant-Id": selectedTenant
-        },
-        body: JSON.stringify({
-          code: formState.code.trim(),
-          name: formState.name.trim(),
-          category: formState.category,
-          kkm: Number(formState.kkm)
-        })
+      await createSubject({
+        code: formState.code.trim(),
+        name: formState.name.trim(),
+        category: formState.category,
+        kkm: Number(formState.kkm)
       });
-
-      const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string; errors?: FormErrors } | null;
-
-      if (!response.ok || payload?.success === false) {
-        setFormErrors(payload?.errors ?? {});
-        throw new Error(payload?.message ?? "Gagal menyimpan mapel.");
-      }
 
       const rows = await refreshSubjects();
       setSubjects(rows);

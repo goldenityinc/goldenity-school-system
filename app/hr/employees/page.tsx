@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useTenant } from "../../../components/tenant-context";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
+import { createEmployee, getEmployees } from "../../actions/academic-gateway";
 
 type EmployeeRow = {
   id: string;
@@ -147,24 +148,7 @@ export default function EmployeeManagementPage() {
       try {
         setIsLoading(true);
         setPageError(null);
-        const response = await fetch("/api/employees", {
-          method: "GET",
-          headers: {
-            "X-Tenant-Id": selectedTenant
-          },
-          cache: "no-store"
-        });
-
-        const payload = (await response.json().catch(() => null)) as
-          | { success?: boolean; message?: string; data?: EmployeeRow[] }
-          | EmployeeRow[]
-          | null;
-
-        if (!response.ok) {
-          throw new Error((payload as { message?: string } | null)?.message ?? "Gagal memuat data karyawan.");
-        }
-
-        const rows = Array.isArray(payload) ? payload : payload?.data ?? [];
+        const rows = (await getEmployees()) as EmployeeRow[];
 
         if (!isActive) {
           return;
@@ -219,19 +203,8 @@ export default function EmployeeManagementPage() {
   }
 
   function refreshEmployees(tenantId: string) {
-    return fetch("/api/employees", {
-      method: "GET",
-      headers: {
-        "X-Tenant-Id": tenantId
-      },
-      cache: "no-store"
-    }).then(async (response) => {
-      const payload = (await response.json().catch(() => null)) as EmployeeRow[] | { data?: EmployeeRow[] } | null;
-      if (!response.ok) {
-        throw new Error((payload as { message?: string } | null)?.message ?? "Gagal memuat data karyawan.");
-      }
-      return Array.isArray(payload) ? payload : payload?.data ?? [];
-    });
+    void tenantId;
+    return getEmployees().then((rows) => rows as EmployeeRow[]);
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -250,30 +223,16 @@ export default function EmployeeManagementPage() {
       try {
         setPageError(null);
 
-        const response = await fetch("/api/employees", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Tenant-Id": selectedTenant
-          },
-          body: JSON.stringify({
-            name: formState.name.trim(),
-            nik: formState.nik.trim(),
-            nuptk: formState.nuptk.trim() || null,
-            email: formState.email.trim(),
-            phone: formState.phone.trim() || null,
-            gender: formState.gender || null,
-            role: formState.role,
-            status: formState.status
-          })
+        await createEmployee({
+          name: formState.name.trim(),
+          nik: formState.nik.trim(),
+          nuptk: formState.nuptk.trim() || null,
+          email: formState.email.trim(),
+          phone: formState.phone.trim() || null,
+          gender: formState.gender || null,
+          role: formState.role,
+          status: formState.status
         });
-
-        const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string; errors?: FormErrors } | null;
-
-        if (!response.ok || payload?.success === false) {
-          setFormErrors(payload?.errors ?? {});
-          throw new Error(payload?.message ?? "Gagal menyimpan karyawan.");
-        }
 
         const rows = await refreshEmployees(selectedTenant);
         setEmployees(rows);

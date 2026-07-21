@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
 import { useTenant } from "../../../components/tenant-context";
+import { createClassroom, getClassrooms, getEmployees } from "../../actions/academic-gateway";
 
 type ClassroomRow = {
   id: string;
@@ -147,21 +148,7 @@ export default function ClassroomsPage() {
     }
 
     try {
-      const response = await fetch("/api/classrooms", {
-        method: "GET",
-        headers: {
-          "X-Tenant-Id": selectedTenant
-        },
-        cache: "no-store"
-      });
-
-      const payload = (await response.json().catch(() => null)) as ClassroomResponse;
-
-      if (!response.ok) {
-        throw new Error((payload as { message?: string } | null)?.message ?? "Gagal memuat data kelas.");
-      }
-
-      const rows = Array.isArray(payload) ? payload : payload?.data ?? payload?.classrooms ?? [];
+      const rows = (await getClassrooms()) as ClassroomRow[];
       setClassrooms(rows);
       return rows;
     } catch (error) {
@@ -183,21 +170,7 @@ export default function ClassroomsPage() {
     }
 
     try {
-      const response = await fetch("/api/employees", {
-        method: "GET",
-        headers: {
-          "X-Tenant-Id": selectedTenant
-        },
-        cache: "no-store"
-      });
-
-      const payload = (await response.json().catch(() => null)) as EmployeeResponse;
-
-      if (!response.ok) {
-        throw new Error((payload as { message?: string } | null)?.message ?? "Gagal memuat data guru.");
-      }
-
-      const rows = Array.isArray(payload) ? payload : payload?.data ?? [];
+      const rows = (await getEmployees()) as EmployeeRow[];
       setEmployees(rows);
       return rows;
     } catch (error) {
@@ -285,27 +258,13 @@ export default function ClassroomsPage() {
     try {
       setPageError(null);
 
-      const response = await fetch("/api/classrooms", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Tenant-Id": selectedTenant
-        },
-        body: JSON.stringify({
-          code: formState.code.trim(),
-          name: formState.name.trim(),
-          capacity: Number(formState.capacity),
-          academicYear: formState.academicYear.trim(),
-          homeroomTeacherId: formState.homeroomTeacherId
-        })
+      await createClassroom({
+        code: formState.code.trim(),
+        name: formState.name.trim(),
+        capacity: Number(formState.capacity),
+        academicYear: formState.academicYear.trim(),
+        homeroomTeacherId: formState.homeroomTeacherId
       });
-
-      const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string; errors?: FormErrors } | null;
-
-      if (!response.ok || payload?.success === false) {
-        setFormErrors(payload?.errors ?? {});
-        throw new Error(payload?.message ?? "Gagal menyimpan kelas.");
-      }
 
       await loadClassrooms();
       setToast({ type: "success", message: "Kelas berhasil ditambahkan." });
