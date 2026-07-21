@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, message: "Sesi tenant tidak valid." }, { status: 401 });
   }
 
-  return forwardJsonResponse("/subjects", { method: "GET" }, session, request);
+  return forwardJsonResponse("/api/subjects", { method: "GET" }, session, request);
 }
 
 export async function POST(request: Request) {
