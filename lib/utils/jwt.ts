@@ -4,6 +4,7 @@ import { AUTH_TOKEN_COOKIE_NAME } from "../api/auth";
 export const AUTH_TENANT_LABEL_COOKIE_NAME = "goldenity_school_tenant_label";
 
 export type JwtGatewaySession = {
+  token?: string;
   userId: string;
   tenantId: string;
   role: string;
@@ -169,6 +170,7 @@ export async function getCurrentSession(): Promise<JwtGatewaySession | null> {
     }
     return {
       ...session,
+      token,
       name: session.name,
       tenantName: session.tenantName ?? tenantLabelFromCookie ?? undefined,
       image: session.image ?? null,

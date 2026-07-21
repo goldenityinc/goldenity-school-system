@@ -9,14 +9,15 @@ function buildBackendUrl(path: string) {
 }
 
 async function getForwardHeaders(session: Awaited<ReturnType<typeof getCurrentSession>>, request: Request) {
-  const authorizationHeader = request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "";
+  const requestAuthorizationHeader = request.headers.get("authorization") ?? request.headers.get("Authorization") ?? "";
+  const sessionTokenAuthorizationHeader = session?.token ? `Bearer ${session.token}` : "";
 
   if (!session?.tenantId) {
     return null;
   }
 
   const backendHeaders = {
-    Authorization: authorizationHeader || "",
+    Authorization: requestAuthorizationHeader || sessionTokenAuthorizationHeader,
     "Content-Type": "application/json",
     "x-tenant-id": session?.tenantId || session?.tenant_id || session?.user?.tenantId || "MISSING_TENANT",
     "x-user-id": session?.userId || session?.id || session?.user?.id || "MISSING_USER",
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
   const bodyText = await request.text();
 
   return forwardJsonResponse(
-    "/subjects",
+    "/api/subjects",
     {
       method: "POST",
       body: bodyText,
