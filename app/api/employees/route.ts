@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { AUTH_TOKEN_COOKIE_NAME } from "../../../lib/api/auth";
-import { decodeJwtPayload } from "../../../lib/utils/jwt";
 
 const DEFAULT_BACKEND_URL =
   process.env.CAMPUS_API_URL ?? process.env.EMPLOYEE_API_BASE_URL ?? process.env.GOLDENITY_ADMIN_CORE_API_URL ?? "https://goldenity-campus-website.vercel.app";
@@ -10,103 +9,150 @@ function buildBackendUrl(path: string) {
   return `${DEFAULT_BACKEND_URL.replace(/\/$/, "")}${path}`;
 }
 
-type ForwardSession = {
+type JwtClaims = {
+  userId?: string;
+  sub?: string;
+  id?: string;
+  role?: string;
+  userRole?: string;
+  tenantId?: string;
+  tenant_id?: string;
+  user?: {
+    id?: string;
+    userId?: string;
+    role?: string;
+    tenantId?: string;
+    tenant_id?: string;
+  };
+  roles?: string[];
+};
+
+type ProxySession = {
   token: string;
   tenantId: string;
   userId: string;
   role: string;
 };
 
-function readBearerToken(authorizationHeader: string | null): string | null {
-  if (!authorizationHeader) {
-    return null;
-  }
-
-  const [scheme, value] = authorizationHeader.split(" ");
-  if (scheme?.toLowerCase() !== "bearer" || !value) {
-    return null;
-  }
-
-  return value.trim();
+function decodeBase64Url(input: string) {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  return Buffer.from(padded, "base64").toString("utf8");
 }
 
-async function resolveForwardSession(request: Request): Promise<ForwardSession | null> {
-  const cookieStore = await cookies();
-  const tokenFromCookie = cookieStore.get(AUTH_TOKEN_COOKIE_NAME)?.value?.trim() || "";
-  const tokenFromAuthorizationHeader = readBearerToken(request.headers.get("authorization") ?? request.headers.get("Authorization"));
-  const token = tokenFromCookie || tokenFromAuthorizationHeader || "";
-
-  if (!token) {
+function decodeJwtClaims(token: string): JwtClaims | null {
+  const parts = token.split(".");
+  if (parts.length < 2) {
     return null;
   }
 
   try {
-    const session = decodeJwtPayload(token);
-    const tenantId = session.tenantId || session.tenant_id || session.user?.tenantId || session.user?.tenant_id;
-    const userId = session.userId || session.id || session.user?.id;
-    const role = session.role || session.user?.role || "admin";
-
-    if (!tenantId || !userId) {
-      return null;
-    }
-
-    return {
-      token,
-      tenantId,
-      userId,
-      role
-    };
+    return JSON.parse(decodeBase64Url(parts[1])) as JwtClaims;
   } catch {
     return null;
   }
 }
 
-async function forwardJsonResponse(path: string, init: RequestInit, request: Request) {
-  const session = await resolveForwardSession(request);
+function readHeaderAny(request: Request, requestHeaders: Headers, name: string) {
+  return request.headers.get(name) ?? requestHeaders.get(name) ?? "";
+}
 
-  if (!session) {
-    return NextResponse.json({ error: "Local session missing" }, { status: 401 });
+function readBearerToken(authorizationHeader: string) {
+  const [scheme, value] = authorizationHeader.split(" ");
+  if (scheme?.toLowerCase() !== "bearer" || !value) {
+    return "";
   }
 
-  const backendHeaders = {
-    "Content-Type": "application/json",
-    "x-tenant-id": session.tenantId,
-    "x-user-id": session.userId,
-    "x-role": session.role,
-    Authorization: `Bearer ${session.token}`
-  };
+  return value.trim();
+}
 
-  console.log("Parsed Session:", session);
-  console.log("Outgoing Headers:", backendHeaders);
+async function extractProxySession(request: Request): Promise<ProxySession | null> {
+  const cookieStore = await cookies();
+  const requestHeaders = await headers();
+
+  const authorizationHeader = readHeaderAny(request, requestHeaders, "authorization") || readHeaderAny(request, requestHeaders, "Authorization");
+  const tokenFromHeader = readBearerToken(authorizationHeader);
+  const tokenFromCookie = cookieStore.get(AUTH_TOKEN_COOKIE_NAME)?.value?.trim() || "";
+  const token = tokenFromCookie || tokenFromHeader;
+
+  const claims = token ? decodeJwtClaims(token) : null;
+
+  const tenantId =
+    claims?.tenantId ??
+    claims?.tenant_id ??
+    claims?.user?.tenantId ??
+    claims?.user?.tenant_id ??
+    readHeaderAny(request, requestHeaders, "x-tenant-id") ??
+    readHeaderAny(request, requestHeaders, "X-Tenant-Id");
+
+  const userId =
+    claims?.userId ??
+    claims?.sub ??
+    claims?.id ??
+    claims?.user?.id ??
+    claims?.user?.userId ??
+    readHeaderAny(request, requestHeaders, "x-user-id") ??
+    readHeaderAny(request, requestHeaders, "X-User-Id");
+
+  const role =
+    claims?.role ??
+    claims?.userRole ??
+    claims?.user?.role ??
+    (Array.isArray(claims?.roles) ? claims?.roles[0] : undefined) ??
+    readHeaderAny(request, requestHeaders, "x-role") ??
+    readHeaderAny(request, requestHeaders, "X-Role");
+
+  if (!token || !tenantId || !userId || !role) {
+    return null;
+  }
+
+  return {
+    token,
+    tenantId,
+    userId,
+    role
+  };
+}
+
+async function proxyJson(path: string, init: RequestInit, request: Request) {
+  const session = await extractProxySession(request);
+
+  if (!session) {
+    return NextResponse.json({ error: "FRONTEND_PROXY_MISSING_SESSION" }, { status: 401 });
+  }
 
   const response = await fetch(buildBackendUrl(path), {
     ...init,
     headers: {
-      ...backendHeaders,
+      "Content-Type": "application/json",
+      "x-tenant-id": session.tenantId,
+      "x-user-id": session.userId,
+      "x-role": session.role,
+      Authorization: `Bearer ${session.token}`,
       ...(init.headers ?? {})
     },
     cache: "no-store"
   });
 
-  const text = await response.text();
-  const contentType = response.headers.get("content-type") ?? "application/json";
+  const responseText = await response.text();
+  const responseContentType = response.headers.get("content-type") ?? "application/json";
 
-  return new NextResponse(text, {
+  return new NextResponse(responseText, {
     status: response.status,
     headers: {
-      "Content-Type": contentType
+      "Content-Type": responseContentType
     }
   });
 }
 
 export async function GET(request: Request) {
-  return forwardJsonResponse("/api/employees", { method: "GET" }, request);
+  return proxyJson("/api/employees", { method: "GET" }, request);
 }
 
 export async function POST(request: Request) {
   const bodyText = await request.text();
 
-  return forwardJsonResponse(
+  return proxyJson(
     "/api/employees",
     {
       method: "POST",
