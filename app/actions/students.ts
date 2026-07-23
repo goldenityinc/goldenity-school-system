@@ -332,6 +332,123 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
   }
 }
 
+export async function updateStudent(tenantId: string, studentId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
+  if (!process.env.DATABASE_URL) {
+    return {
+      success: false,
+      errors: {},
+      message: "Konfigurasi database belum siap (DATABASE_URL belum di-set)."
+    };
+  }
+
+  if (!tenantId.trim()) {
+    return {
+      success: false,
+      errors: {},
+      message: "Sesi tenant tidak valid. Silakan login ulang."
+    };
+  }
+
+  if (!studentId.trim()) {
+    return {
+      success: false,
+      errors: {},
+      message: "ID murid tidak valid."
+    };
+  }
+
+  const parsed = StudentSchema.safeParse(data);
+
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const firstError = parsed.error.issues[0]?.message;
+
+    return {
+      success: false,
+      errors: {
+        name: fieldErrors.name?.[0],
+        nis: fieldErrors.nis?.[0],
+        parentPhone: fieldErrors.parentPhone?.[0],
+        dateOfBirth: fieldErrors.dateOfBirth?.[0],
+        gender: fieldErrors.gender?.[0],
+        previousReportCard: fieldErrors.previousReportCard?.[0]
+      },
+      message: firstError ?? "Data murid tidak valid. Periksa input dan coba lagi."
+    };
+  }
+
+  const cleanedData = parsed.data;
+
+  try {
+    const existing = await prisma.student.findFirst({
+      where: { id: studentId.trim(), tenantId: tenantId.trim() },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      return {
+        success: false,
+        errors: {},
+        message: "Murid tidak ditemukan untuk tenant aktif."
+      };
+    }
+
+    const updated = await prisma.student.update({
+      where: { id: studentId.trim() },
+      data: {
+        fullName: cleanedData.name.trim(),
+        studentNumber: cleanedData.nis.trim(),
+        gender: cleanedData.gender?.trim() || null,
+        placeOfBirth: cleanedData.placeOfBirth?.trim() || null,
+        dateOfBirth: cleanedData.dateOfBirth ? new Date(cleanedData.dateOfBirth) : null,
+        address: cleanedData.address?.trim() || null,
+        fatherName: cleanedData.fatherName?.trim() || null,
+        motherName: cleanedData.motherName?.trim() || null,
+        parentPhone: cleanedData.parentPhone?.trim() || null,
+        parentJob: cleanedData.parentJob?.trim() || null,
+        previousSchool: cleanedData.previousSchool?.trim() || null,
+        previousReportCard: cleanedData.previousReportCard ?? undefined
+      }
+    });
+
+    revalidatePath("/students");
+    revalidatePath(`/students/${updated.id}`);
+    return { success: true, id: updated.id };
+  } catch (error) {
+    if (error instanceof PrismaClientInitializationError) {
+      return {
+        success: false,
+        errors: {},
+        message: "Koneksi database gagal. Periksa DATABASE_URL dan status server database."
+      };
+    }
+
+    if (error instanceof PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return {
+          success: false,
+          errors: {
+            nis: "NIS sudah terdaftar untuk tenant ini."
+          },
+          message: "Data murid gagal disimpan karena NIS sudah digunakan."
+        };
+      }
+
+      return {
+        success: false,
+        errors: {},
+        message: `Skema database belum sinkron atau ada constraint yang ditolak (kode: ${error.code}).`
+      };
+    }
+
+    return {
+      success: false,
+      errors: {},
+      message: "Terjadi kesalahan saat menyimpan data murid. Coba lagi."
+    };
+  }
+}
+
 export async function deleteStudent(id: string, tenantId: string) {
   const student = await prisma.student.findFirst({
     where: {

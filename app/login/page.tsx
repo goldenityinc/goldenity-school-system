@@ -2,9 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tenantSlug, setTenantSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +43,13 @@ export default function LoginPage() {
       isActive = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    const fromQuery = searchParams.get("tenantSlug");
+    if (fromQuery && fromQuery.trim()) {
+      setTenantSlug(fromQuery.trim());
+    }
+  }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

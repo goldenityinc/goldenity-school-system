@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Pencil } from "lucide-react";
 import { useTenant } from "../../../components/tenant-context";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
-import { createSubject, getSubjects } from "../../actions/academic-gateway";
+import { createSubject, getSubjects, updateSubject } from "../../actions/academic-gateway";
 
 type SubjectRow = {
   id: string;
@@ -90,6 +91,7 @@ export default function CurriculumPage() {
   const [toast, setToast] = useState<ToastState>(null);
   const [formState, setFormState] = useState<SubjectFormState>(initialFormState);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
 
   const totalSubjects = useMemo(() => subjects.length, [subjects]);
 
@@ -144,6 +146,20 @@ export default function CurriculumPage() {
 
   function openModal() {
     setFormErrors({});
+    setEditingSubjectId(null);
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(subject: SubjectRow) {
+    setFormErrors({});
+    setEditingSubjectId(subject.id);
+    const kkmCandidate = subject.kkm ?? subject.minimumPassingGrade;
+    setFormState({
+      code: String(subject.code ?? ""),
+      name: String(subject.name ?? ""),
+      category: String(subject.category ?? "NASIONAL"),
+      kkm: kkmCandidate !== null && kkmCandidate !== undefined ? String(kkmCandidate) : "75"
+    });
     setIsModalOpen(true);
   }
 
@@ -151,6 +167,7 @@ export default function CurriculumPage() {
     setIsModalOpen(false);
     setFormErrors({});
     setFormState(initialFormState);
+    setEditingSubjectId(null);
   }
 
   function updateField<K extends keyof SubjectFormState>(key: K, value: SubjectFormState[K]) {
@@ -209,12 +226,20 @@ export default function CurriculumPage() {
     try {
       setPageError(null);
 
-      const submitResult = await createSubject({
-        code: formState.code.trim(),
-        name: formState.name.trim(),
-        category: formState.category,
-        kkm: Number(formState.kkm)
-      });
+      const submitResult = editingSubjectId
+        ? await updateSubject({
+            id: editingSubjectId,
+            code: formState.code.trim(),
+            name: formState.name.trim(),
+            category: formState.category,
+            kkm: Number(formState.kkm)
+          })
+        : await createSubject({
+            code: formState.code.trim(),
+            name: formState.name.trim(),
+            category: formState.category,
+            kkm: Number(formState.kkm)
+          });
 
       if (!submitResult.success) {
         setFormErrors((submitResult.errors as FormErrors | undefined) ?? {});
@@ -223,7 +248,7 @@ export default function CurriculumPage() {
 
       const rows = await refreshSubjects();
       setSubjects(rows);
-      setToast({ type: "success", message: "Mata pelajaran berhasil ditambahkan." });
+      setToast({ type: "success", message: editingSubjectId ? "Mata pelajaran berhasil diperbarui." : "Mata pelajaran berhasil ditambahkan." });
       closeModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menyimpan mapel.";
@@ -269,6 +294,7 @@ export default function CurriculumPage() {
                   <th className="border-b border-slate-200 px-4 py-3">Nama Mapel</th>
                   <th className="border-b border-slate-200 px-4 py-3">Kategori</th>
                   <th className="border-b border-slate-200 px-4 py-3 text-right">KKM</th>
+                  <th className="border-b border-slate-200 px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,6 +304,16 @@ export default function CurriculumPage() {
                     <td className="border-b border-slate-100 px-4 py-3 font-medium text-slate-900">{subject.name ?? "-"}</td>
                     <td className="border-b border-slate-100 px-4 py-3 text-slate-700">{normalizeCategory(subject.category)}</td>
                     <td className="border-b border-slate-100 px-4 py-3 text-right font-semibold text-slate-900">{resolveKkm(subject)}</td>
+                    <td className="border-b border-slate-100 px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(subject)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        aria-label="Edit mapel"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -286,7 +322,7 @@ export default function CurriculumPage() {
         )}
       </div>
 
-      <Modal open={isModalOpen} title="Tambah Mapel" onClose={closeModal} panelClassName="max-w-2xl">
+      <Modal open={isModalOpen} title={editingSubjectId ? "Ubah Mapel" : "Tambah Mapel"} onClose={closeModal} panelClassName="max-w-2xl">
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Kode Mapel" htmlFor="subject-code" error={formErrors.code}>

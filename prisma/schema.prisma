@@ -79,6 +79,11 @@ model Lecturer {
   staffId         String
   fullName        String
   email           String
+  phone           String?
+  gender          String?
+  role            String   @default("GURU")
+  status          String   @default("ACTIVE")
+  nuptk           String?
   specialization  String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -148,19 +153,22 @@ model Student {
 model Classroom {
   id                String   @id @default(cuid())
   tenantId          String
+  code              String
   name              String
+  capacity          Int?
   academicYear      String
   semester          Int
-  homeroomTeacherId String
+  homeroomTeacherId String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  homeroomTeacher   Lecturer @relation("ClassroomHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: Restrict)
+  homeroomTeacher   Lecturer? @relation("ClassroomHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
   students          Student[]
   courseOfferings   CourseOffering[]
 
-  @@unique([tenantId, name, academicYear, semester])
+  @@unique([tenantId, code, academicYear, semester])
   @@index([tenantId])
+  @@index([code])
   @@index([homeroomTeacherId])
 }
 

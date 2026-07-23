@@ -39,17 +39,24 @@ type AdminCoreLoginResponse = {
 };
 
 function resolveAdminCoreBaseUrls() {
-  const candidates = [
+  const candidates: Array<string | undefined> = [
     process.env.CENTRAL_COMMAND_URL,
-    process.env.GOLDENITY_ADMIN_CORE_API_URL,
-    "https://goldenity-admin-core-api.vercel.app"
+    process.env.GOLDENITY_ADMIN_CORE_API_URL
   ];
+
+  if (process.env.NODE_ENV !== "production") {
+    candidates.push("http://127.0.0.1:5001");
+    candidates.push("http://localhost:5001");
+  }
+
+  candidates.push("https://goldenity-admin-core-api.vercel.app");
 
   const normalized = candidates
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-    .map((value) => value.replace(/\/$/, ""));
+    .map((value) => value.trim().replace(/\/+$/, ""))
+    .map((value) => value.replace(/\/api(?:\/v\d+)?$/i, ""));
 
-  return Array.from(new Set(normalized));
+  return Array.from(new Set(normalized.filter((value) => value.length > 0)));
 }
 
 function readTokenFromResponse(data: AdminCoreLoginResponse): string | null {

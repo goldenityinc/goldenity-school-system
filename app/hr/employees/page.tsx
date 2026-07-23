@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { Pencil } from "lucide-react";
 import { useTenant } from "../../../components/tenant-context";
 import { Button } from "../../../components/ui/button";
 import { Modal } from "../../../components/ui/modal";
-import { createEmployee, getEmployees } from "../../actions/academic-gateway";
+import { createEmployee, getEmployees, updateEmployee } from "../../actions/academic-gateway";
 
 type EmployeeRow = {
   id: string;
   name: string;
   nik?: string | null;
   nuptk?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  gender?: string | null;
   role?: string | null;
   status?: string | null;
 };
@@ -118,6 +122,7 @@ export default function EmployeeManagementPage() {
   const [formState, setFormState] = useState<EmployeeFormState>(initialFormState);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isPending, startTransition] = useTransition();
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
 
   const totalEmployees = useMemo(() => employees.length, [employees]);
 
@@ -181,12 +186,31 @@ export default function EmployeeManagementPage() {
 
   function openModal() {
     setFormErrors({});
+    setEditingEmployeeId(null);
+    setFormState(initialFormState);
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(employee: EmployeeRow) {
+    setFormErrors({});
+    setEditingEmployeeId(employee.id);
+    setFormState({
+      name: employee.name ?? "",
+      nik: employee.nik ?? "",
+      nuptk: employee.nuptk ?? "",
+      email: employee.email ?? "",
+      phone: employee.phone ?? "",
+      gender: employee.gender ?? "",
+      role: employee.role ?? "GURU",
+      status: employee.status ?? "ACTIVE"
+    });
     setIsModalOpen(true);
   }
 
   function closeModal() {
     setIsModalOpen(false);
     setFormErrors({});
+    setEditingEmployeeId(null);
   }
 
   function updateField<K extends keyof EmployeeFormState>(key: K, value: EmployeeFormState[K]) {
@@ -235,16 +259,28 @@ export default function EmployeeManagementPage() {
       try {
         setPageError(null);
 
-        const submitResult = await createEmployee({
-          name: formState.name.trim(),
-          nik: formState.nik.trim(),
-          nuptk: formState.nuptk.trim() || null,
-          email: formState.email.trim(),
-          phone: formState.phone.trim() || null,
-          gender: formState.gender || null,
-          role: formState.role,
-          status: formState.status
-        });
+        const submitResult = editingEmployeeId
+          ? await updateEmployee({
+              id: editingEmployeeId,
+              name: formState.name.trim(),
+              nik: formState.nik.trim(),
+              nuptk: formState.nuptk.trim() || null,
+              email: formState.email.trim(),
+              phone: formState.phone.trim() || null,
+              gender: formState.gender || null,
+              role: formState.role,
+              status: formState.status
+            })
+          : await createEmployee({
+              name: formState.name.trim(),
+              nik: formState.nik.trim(),
+              nuptk: formState.nuptk.trim() || null,
+              email: formState.email.trim(),
+              phone: formState.phone.trim() || null,
+              gender: formState.gender || null,
+              role: formState.role,
+              status: formState.status
+            });
 
         if (!submitResult.success) {
           setFormErrors((submitResult.errors as FormErrors | undefined) ?? {});
@@ -253,7 +289,7 @@ export default function EmployeeManagementPage() {
 
         const rows = await refreshEmployees(selectedTenant);
         setEmployees(rows);
-        setToast({ type: "success", message: "Karyawan berhasil ditambahkan." });
+        setToast({ type: "success", message: editingEmployeeId ? "Karyawan berhasil diperbarui." : "Karyawan berhasil ditambahkan." });
         setFormState(initialFormState);
         closeModal();
       } catch (error) {
@@ -292,12 +328,13 @@ export default function EmployeeManagementPage() {
                 <th className="border-b border-slate-200 px-3 py-2">Nama</th>
                 <th className="border-b border-slate-200 px-3 py-2">Role</th>
                 <th className="border-b border-slate-200 px-3 py-2">Status</th>
+                <th className="border-b border-slate-200 px-3 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {employees.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-8 text-center text-slate-500" colSpan={4}>
+                  <td className="px-3 py-8 text-center text-slate-500" colSpan={5}>
                     Belum ada data karyawan untuk tenant ini.
                   </td>
                 </tr>
@@ -315,6 +352,16 @@ export default function EmployeeManagementPage() {
                         {displayStatus(employee.status)}
                       </span>
                     </td>
+                    <td className="border-b border-slate-100 px-3 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(employee)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        aria-label="Edit karyawan"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -323,7 +370,7 @@ export default function EmployeeManagementPage() {
         )}
       </div>
 
-      <Modal open={isModalOpen} title="Tambah Karyawan" onClose={closeModal}>
+      <Modal open={isModalOpen} title={editingEmployeeId ? "Ubah Karyawan" : "Tambah Karyawan"} onClose={closeModal}>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Name" htmlFor="employee-name" error={formErrors.name}>

@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { Pencil } from "lucide-react";
 import { deleteStudent, getStudents } from "../actions/students";
 import { useTenant } from "../../components/tenant-context";
+import { Modal } from "../../components/ui/modal";
+import { Button } from "../../components/ui/button";
 
 type StudentRow = {
   id: string;
@@ -43,6 +46,11 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editNis, setEditNis] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -106,6 +114,77 @@ export default function StudentsPage() {
         setErrorMessage(error instanceof Error ? error.message : "Gagal menghapus murid.");
       }
     });
+  }
+
+  function openEditModal(student: StudentRow) {
+    setErrorMessage(null);
+    setEditingStudentId(student.id);
+    setEditName(student.name);
+    setEditNis(student.nis);
+    setIsEditOpen(true);
+  }
+
+  function closeEditModal() {
+    setIsEditOpen(false);
+    setEditingStudentId(null);
+    setEditName("");
+    setEditNis("");
+    setIsSaving(false);
+  }
+
+  async function handleSaveEdit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedTenant || !editingStudentId) {
+      setErrorMessage("Sesi tenant tidak valid.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      setErrorMessage(null);
+      const response = await fetch(`/api/students/${editingStudentId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: editName,
+          nis: editNis
+        })
+      });
+
+      const rawText = await response.text();
+      let result: any = null;
+      if (rawText) {
+        try {
+          result = JSON.parse(rawText);
+        } catch {
+          result = { success: false, message: rawText };
+        }
+      }
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message ?? "Gagal menyimpan perubahan murid.");
+      }
+
+      setStudents((prev) =>
+        prev.map((item) =>
+          item.id === editingStudentId
+            ? {
+                ...item,
+                name: editName,
+                nis: editNis
+              }
+            : item
+        )
+      );
+
+      closeEditModal();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Gagal menyimpan perubahan murid.");
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -196,6 +275,15 @@ export default function StudentsPage() {
                           </Link>
                           <button
                             type="button"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            aria-label={`Edit ${student.name}`}
+                            onClick={() => openEditModal(student)}
+                            disabled={isPending}
+                          >
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
                             className="inline-flex h-8 items-center justify-center rounded-md border border-red-200 px-2 text-red-600 hover:bg-red-50"
                             aria-label={`Delete ${student.name}`}
                             onClick={() => handleDelete(student.id)}
@@ -213,6 +301,40 @@ export default function StudentsPage() {
           )}
         </div>
       </section>
+
+      <Modal open={isEditOpen} title="Ubah Murid" onClose={closeEditModal} panelClassName="max-w-lg">
+        <form className="space-y-4" onSubmit={handleSaveEdit}>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">NIS</span>
+            <input
+              value={editNis}
+              onChange={(event) => setEditNis(event.target.value.replace(/\D/g, ""))}
+              className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              required
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">Nama</span>
+            <input
+              value={editName}
+              onChange={(event) => setEditName(event.target.value)}
+              className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm outline-none ring-yellow-500 focus:ring-2"
+              required
+            />
+          </label>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="outline" type="button" onClick={closeEditModal} disabled={isSaving}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={isSaving || !editingStudentId}>
+              {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 }
