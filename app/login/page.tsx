@@ -51,6 +51,23 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (tenantSlug.trim()) {
+      return;
+    }
+
+    const cookieValue = document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("goldenity_school_active_tenant_slug="))
+      ?.split("=")[1];
+
+    const decoded = cookieValue ? decodeURIComponent(cookieValue) : "";
+    if (decoded.trim()) {
+      setTenantSlug(decoded.trim());
+    }
+  }, [tenantSlug]);
+
   const isTenantPreset = Boolean(tenantSlug.trim());
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
