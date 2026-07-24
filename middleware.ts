@@ -14,16 +14,27 @@ export default function middleware(request: NextRequest) {
     const rest = tenantPrefixMatch[2] ?? "";
     const forwardedPath = rest ? `/${rest}` : "/";
 
-    const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = forwardedPath;
-
-    if (forwardedPath === "/login" && tenantSlug && !rewriteUrl.searchParams.get("tenantSlug")) {
-      rewriteUrl.searchParams.set("tenantSlug", tenantSlug);
-    }
-
     if (!token && forwardedPath !== "/login") {
       return NextResponse.redirect(new URL(`/school-erp/${encodeURIComponent(tenantSlug)}/login`, request.url));
     }
+
+    if (forwardedPath === "/login") {
+      const response = token
+        ? NextResponse.redirect(new URL(`/school-erp/${encodeURIComponent(tenantSlug)}`, request.url))
+        : NextResponse.next();
+
+      if (tenantSlug) {
+        response.cookies.set("goldenity_school_active_tenant_slug", tenantSlug, {
+          path: "/",
+          sameSite: "lax",
+          secure: request.nextUrl.protocol === "https:",
+        });
+      }
+      return response;
+    }
+
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = forwardedPath;
 
     const response = NextResponse.rewrite(rewriteUrl);
     if (tenantSlug) {

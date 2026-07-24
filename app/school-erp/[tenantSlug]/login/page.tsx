@@ -1,0 +1,153 @@
+"use client";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Props = {
+  params: {
+    tenantSlug: string;
+  };
+};
+
+export default function SchoolTenantLoginPage({ params }: Props) {
+  const router = useRouter();
+  const tenantSlug = useMemo(() => decodeURIComponent(String(params?.tenantSlug || "").trim()), [params]);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function checkSession() {
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json().catch(() => null)) as { authenticated?: boolean } | null;
+      if (payload?.authenticated) {
+        router.replace(`/school-erp/${encodeURIComponent(tenantSlug)}`);
+      }
+    }
+
+    void checkSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [router, tenantSlug]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tenantSlug, email, password }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        setErrorMessage(payload?.message ?? "Username atau password tidak valid.");
+        return;
+      }
+
+      router.push(`/school-erp/${encodeURIComponent(tenantSlug)}`);
+      router.refresh();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setErrorMessage("Request login timeout. Silakan coba lagi.");
+      } else {
+        setErrorMessage("Terjadi kendala koneksi saat login. Coba beberapa saat lagi.");
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5">
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-bold text-slate-900">Masuk ke EduCore</h1>
+          <p className="mt-2 text-sm text-slate-600">Masuk untuk mengakses dashboard sekolah.</p>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
+          <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            Tenant: <span className="font-semibold text-slate-900">{tenantSlug}</span>
+          </div>
+
+          <div>
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+              Nama Pengguna
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="text"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
+              placeholder="Masukkan nama pengguna"
+              autoComplete="off"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+              Kata Sandi
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
+              placeholder="Masukkan kata sandi"
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          {errorMessage ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p> : null}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="h-11 w-full rounded-lg bg-slate-900 px-4 font-semibold text-yellow-400 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? "Memproses..." : "Masuk"}
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
