@@ -56,6 +56,13 @@ export default function LoginPage() {
       return;
     }
 
+    const pathMatch = window.location.pathname.match(/^\/school-erp\/([^/]+)\/login\/?$/);
+    const fromPath = pathMatch ? decodeURIComponent(pathMatch[1] ?? "") : "";
+    if (fromPath.trim()) {
+      setTenantSlug(fromPath.trim());
+      return;
+    }
+
     const cookieValue = document.cookie
       .split(";")
       .map((part) => part.trim())
