@@ -51,6 +51,8 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
+  const isTenantPreset = Boolean(tenantSlug.trim());
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -103,22 +105,28 @@ export default function LoginPage() {
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
-          <div>
-            <label htmlFor="tenantSlug" className="mb-1 block text-sm font-medium text-slate-700">
-              Slug Tenant
-            </label>
-            <input
-              id="tenantSlug"
-              name="tenantSlug"
-              type="text"
-              value={tenantSlug}
-              onChange={(event) => setTenantSlug(event.target.value)}
-              className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
-              placeholder="Masukkan slug tenant"
-              autoComplete="off"
-              required
-            />
-          </div>
+          {!isTenantPreset ? (
+            <div>
+              <label htmlFor="tenantSlug" className="mb-1 block text-sm font-medium text-slate-700">
+                Slug Tenant
+              </label>
+              <input
+                id="tenantSlug"
+                name="tenantSlug"
+                type="text"
+                value={tenantSlug}
+                onChange={(event) => setTenantSlug(event.target.value)}
+                className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
+                placeholder="Masukkan slug tenant"
+                autoComplete="off"
+                required
+              />
+            </div>
+          ) : (
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Tenant: <span className="font-semibold text-slate-900">{tenantSlug}</span>
+            </div>
+          )}
 
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
