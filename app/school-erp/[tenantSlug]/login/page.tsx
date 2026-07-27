@@ -1,16 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
-type Props = {
-  params: {
-    tenantSlug: string;
-  };
-};
-
-export default function SchoolTenantLoginPage({ params }: Props) {
+export default function SchoolTenantLoginPage() {
   const router = useRouter();
+  const params = useParams<{ tenantSlug?: string }>();
   const tenantSlug = useMemo(() => decodeURIComponent(String(params?.tenantSlug || "").trim()), [params]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -99,8 +94,18 @@ export default function SchoolTenantLoginPage({ params }: Props) {
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off">
-          <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Tenant: <span className="font-semibold text-slate-900">{tenantSlug}</span>
+          <div>
+            <label htmlFor="tenantSlug" className="mb-1 block text-sm font-medium text-slate-700">
+              Tenant
+            </label>
+            <input
+              id="tenantSlug"
+              name="tenantSlug"
+              type="text"
+              value={tenantSlug}
+              readOnly
+              className="h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-slate-900 outline-none"
+            />
           </div>
 
           <div>

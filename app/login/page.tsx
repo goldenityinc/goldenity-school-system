@@ -1,17 +1,44 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [tenantSlug, setTenantSlug] = useState("");
+  const [manualTenantSlug, setManualTenantSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const presetTenantSlug = useMemo(() => {
+    const fromQuery = searchParams.get("tenantSlug");
+    if (fromQuery?.trim()) {
+      return fromQuery.trim();
+    }
+
+    const pathMatch = pathname.match(/^\/school-erp\/([^/]+)\/login\/?$/);
+    const fromPath = pathMatch ? decodeURIComponent(pathMatch[1] ?? "") : "";
+    if (fromPath.trim()) {
+      return fromPath.trim();
+    }
+
+    if (typeof document !== "undefined") {
+      const cookieValue = document.cookie
+        .split(";")
+        .map((part) => part.trim())
+        .find((part) => part.startsWith("goldenity_school_active_tenant_slug="))
+        ?.split("=")[1];
+      const decoded = cookieValue ? decodeURIComponent(cookieValue) : "";
+      if (decoded.trim()) {
+        return decoded.trim();
+      }
+    }
+
+    return "";
+  }, [pathname, searchParams]);
+  const tenantSlug = presetTenantSlug || manualTenantSlug.trim();
 
   useEffect(() => {
     let isActive = true;
@@ -44,38 +71,7 @@ export default function LoginPage() {
     };
   }, [router]);
 
-  useEffect(() => {
-    const fromQuery = searchParams.get("tenantSlug");
-    if (fromQuery && fromQuery.trim()) {
-      setTenantSlug(fromQuery.trim());
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (tenantSlug.trim()) {
-      return;
-    }
-
-    const pathMatch = window.location.pathname.match(/^\/school-erp\/([^/]+)\/login\/?$/);
-    const fromPath = pathMatch ? decodeURIComponent(pathMatch[1] ?? "") : "";
-    if (fromPath.trim()) {
-      setTenantSlug(fromPath.trim());
-      return;
-    }
-
-    const cookieValue = document.cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith("goldenity_school_active_tenant_slug="))
-      ?.split("=")[1];
-
-    const decoded = cookieValue ? decodeURIComponent(cookieValue) : "";
-    if (decoded.trim()) {
-      setTenantSlug(decoded.trim());
-    }
-  }, [tenantSlug]);
-
-  const isTenantPreset = Boolean(tenantSlug.trim());
+  const isTenantPreset = Boolean(presetTenantSlug);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -139,7 +135,7 @@ export default function LoginPage() {
                 name="tenantSlug"
                 type="text"
                 value={tenantSlug}
-                onChange={(event) => setTenantSlug(event.target.value)}
+                onChange={(event) => setManualTenantSlug(event.target.value)}
                 className="h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 outline-none ring-yellow-500 focus:ring-2"
                 placeholder="Masukkan slug tenant"
                 autoComplete="off"
