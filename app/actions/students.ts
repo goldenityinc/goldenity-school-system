@@ -14,10 +14,35 @@ type CreateStudentResult =
       message?: string;
     };
 
-export async function getStudents(tenantId: string, query?: string) {
+async function resolveTenantId(tenantSlugOrId: string) {
+  const normalizedTenantScope = tenantSlugOrId.trim();
+
+  if (!normalizedTenantScope) {
+    return null;
+  }
+
+  const tenantRecord = await prisma.user.findFirst({
+    where: {
+      OR: [{ tenantSlug: normalizedTenantScope }, { tenantId: normalizedTenantScope }]
+    },
+    select: {
+      tenantId: true
+    }
+  });
+
+  return tenantRecord?.tenantId?.trim() || normalizedTenantScope;
+}
+
+export async function getStudents(tenantSlug: string, query?: string) {
   const trimmedQuery = query?.trim();
 
   try {
+    const tenantId = await resolveTenantId(tenantSlug);
+
+    if (!tenantId) {
+      return [];
+    }
+
     const students = await prisma.student.findMany({
       where: {
         tenantId,
@@ -92,7 +117,7 @@ export async function getStudents(tenantId: string, query?: string) {
       })()
     }));
   } catch (error) {
-    console.error("[students.getStudents]", error);
+    console.error("PRISMA MURID FETCH ERROR:", error);
     return [];
   }
 }
@@ -449,7 +474,13 @@ export async function updateStudent(tenantId: string, studentId: string, data: C
   }
 }
 
-export async function deleteStudent(id: string, tenantId: string) {
+export async function deleteStudent(id: string, tenantSlugOrId: string) {
+  const tenantId = await resolveTenantId(tenantSlugOrId);
+
+  if (!tenantId) {
+    throw new Error("Sesi tenant tidak valid.");
+  }
+
   const student = await prisma.student.findFirst({
     where: {
       id,

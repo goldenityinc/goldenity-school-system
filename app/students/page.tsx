@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Pencil } from "lucide-react";
 import { deleteStudent, getStudents } from "../actions/students";
@@ -40,6 +41,7 @@ function TableSkeleton() {
 }
 
 export default function StudentsPage() {
+  const pathname = usePathname();
   const { selectedTenant } = useTenant();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -53,6 +55,12 @@ export default function StudentsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [isPending, startTransition] = useTransition();
+  const routeTenantSlug = useMemo(() => {
+    const match = pathname.match(/^\/school-erp\/([^/]+)(?:\/|$)/);
+    const slug = match ? decodeURIComponent(match[1] ?? "") : "";
+    return slug.trim();
+  }, [pathname]);
+  const tenantScope = routeTenantSlug || selectedTenant;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -67,7 +75,7 @@ export default function StudentsPage() {
   useEffect(() => {
     let isActive = true;
 
-    if (!selectedTenant) {
+    if (!tenantScope) {
       return () => {
         isActive = false;
       };
@@ -77,7 +85,7 @@ export default function StudentsPage() {
       try {
         setIsLoading(true);
         setErrorMessage(null);
-        const result = await getStudents(selectedTenant, debouncedQuery);
+        const result = await getStudents(tenantScope, debouncedQuery);
 
         if (!isActive) {
           return;
@@ -100,7 +108,7 @@ export default function StudentsPage() {
     return () => {
       isActive = false;
     };
-  }, [selectedTenant, debouncedQuery]);
+  }, [tenantScope, debouncedQuery]);
 
   const totalStudents = useMemo(() => students.length, [students]);
 
@@ -108,7 +116,7 @@ export default function StudentsPage() {
     startTransition(async () => {
       try {
         setErrorMessage(null);
-        await deleteStudent(studentId, selectedTenant);
+        await deleteStudent(studentId, tenantScope);
         setStudents((prev) => prev.filter((student) => student.id !== studentId));
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Gagal menghapus murid.");
@@ -134,7 +142,7 @@ export default function StudentsPage() {
 
   async function handleSaveEdit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedTenant || !editingStudentId) {
+    if (!tenantScope || !editingStudentId) {
       setErrorMessage("Sesi tenant tidak valid.");
       return;
     }
