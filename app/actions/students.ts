@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { PrismaClientInitializationError, PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import prisma from "../../lib/prisma";
 import { StudentSchema, type CreateStudentInput } from "../../lib/student-schema";
+import { getCurrentSession } from "../../lib/utils/jwt";
 
 type CreateStudentResult =
   | { success: true; id: string }
@@ -14,11 +16,31 @@ type CreateStudentResult =
       message?: string;
     };
 
-async function resolveTenantId(tenantSlugOrId: string) {
+const ACTIVE_TENANT_SLUG_COOKIE_NAME = "goldenity_school_active_tenant_slug";
+
+async function resolveTenantContext(tenantSlugOrId: string) {
   const normalizedTenantScope = tenantSlugOrId.trim();
 
   if (!normalizedTenantScope) {
     return null;
+  }
+
+  const [cookieStore, session] = await Promise.all([
+    cookies(),
+    getCurrentSession().catch(() => null)
+  ]);
+  const activeTenantSlug = decodeURIComponent(cookieStore.get(ACTIVE_TENANT_SLUG_COOKIE_NAME)?.value ?? "").trim();
+
+  if (
+    session?.tenantId &&
+    (normalizedTenantScope === session.tenantId ||
+      (activeTenantSlug && normalizedTenantScope === activeTenantSlug) ||
+      (session.tenantName && normalizedTenantScope === session.tenantName))
+  ) {
+    return {
+      tenantId: session.tenantId.trim(),
+      tenantSlug: activeTenantSlug || normalizedTenantScope
+    };
   }
 
   const tenantRecord = await prisma.user.findFirst({
@@ -26,26 +48,31 @@ async function resolveTenantId(tenantSlugOrId: string) {
       OR: [{ tenantSlug: normalizedTenantScope }, { tenantId: normalizedTenantScope }]
     },
     select: {
-      tenantId: true
+      tenantId: true,
+      tenantSlug: true
     }
   });
 
-  return tenantRecord?.tenantId?.trim() || normalizedTenantScope;
+  return {
+    tenantId: tenantRecord?.tenantId?.trim() || normalizedTenantScope,
+    tenantSlug: tenantRecord?.tenantSlug?.trim() || activeTenantSlug || normalizedTenantScope
+  };
 }
 
 export async function getStudents(tenantSlug: string, query?: string) {
   const trimmedQuery = query?.trim();
 
   try {
-    const tenantId = await resolveTenantId(tenantSlug);
+    console.log("Fetching students for slug:", tenantSlug);
+    const tenantContext = await resolveTenantContext(tenantSlug);
 
-    if (!tenantId) {
+    if (!tenantContext?.tenantId) {
       return [];
     }
 
     const students = await prisma.student.findMany({
       where: {
-        tenantId,
+        tenantId: tenantContext.tenantId,
         ...(trimmedQuery
           ? {
               OR: [
@@ -90,6 +117,7 @@ export async function getStudents(tenantSlug: string, query?: string) {
         }
       }
     });
+    console.log("Found students count:", students.length);
 
     return students.map((student: (typeof students)[number]) => ({
       ...(() => {
@@ -233,7 +261,7 @@ export async function getStudentById(tenantId: string, studentId: string) {
   }
 }
 
-export async function createStudent(tenantId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
+export async function createStudent(tenantSlugOrId: string, data: CreateStudentInput): Promise<CreateStudentResult> {
   if (!process.env.DATABASE_URL) {
     return {
       success: false,
@@ -242,7 +270,9 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
     };
   }
 
-  if (!tenantId.trim()) {
+  const tenantContext = await resolveTenantContext(tenantSlugOrId);
+
+  if (!tenantContext?.tenantId) {
     return {
       success: false,
       errors: {},
@@ -273,7 +303,7 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
   const cleanedData = parsed.data;
 
   const baseStudentData = {
-    tenantId: tenantId.trim(),
+    tenantId: tenantContext.tenantId.trim(),
     fullName: cleanedData.name.trim(),
     studentNumber: cleanedData.nis.trim(),
     enrollmentDate: new Date()
@@ -299,6 +329,9 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
     });
 
     revalidatePath("/students");
+    revalidatePath("/students/new");
+    revalidatePath(`/school-erp/${encodeURIComponent(tenantContext.tenantSlug)}/students`, "page");
+    revalidatePath(`/school-erp/${encodeURIComponent(tenantContext.tenantSlug)}/students/new`, "page");
     return { success: true, id: createdStudent.id };
   } catch (error) {
     if (error instanceof PrismaClientInitializationError) {
@@ -326,6 +359,9 @@ export async function createStudent(tenantId: string, data: CreateStudentInput):
         });
 
         revalidatePath("/students");
+        revalidatePath("/students/new");
+        revalidatePath(`/school-erp/${encodeURIComponent(tenantContext.tenantSlug)}/students`, "page");
+        revalidatePath(`/school-erp/${encodeURIComponent(tenantContext.tenantSlug)}/students/new`, "page");
         return { success: true, id: fallbackStudent.id };
       } catch (fallbackError) {
         const fallbackCode = fallbackError instanceof PrismaClientKnownRequestError ? fallbackError.code : null;
@@ -475,7 +511,8 @@ export async function updateStudent(tenantId: string, studentId: string, data: C
 }
 
 export async function deleteStudent(id: string, tenantSlugOrId: string) {
-  const tenantId = await resolveTenantId(tenantSlugOrId);
+  const tenantContext = await resolveTenantContext(tenantSlugOrId);
+  const tenantId = tenantContext?.tenantId;
 
   if (!tenantId) {
     throw new Error("Sesi tenant tidak valid.");
@@ -539,4 +576,7 @@ export async function deleteStudent(id: string, tenantSlugOrId: string) {
   });
 
   revalidatePath("/students");
+  if (tenantContext?.tenantSlug) {
+    revalidatePath(`/school-erp/${encodeURIComponent(tenantContext.tenantSlug)}/students`, "page");
+  }
 }

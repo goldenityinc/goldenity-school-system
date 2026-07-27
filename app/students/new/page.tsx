@@ -79,6 +79,14 @@ export default function NewStudentWizardPage() {
 
   const stepTitle = useMemo(() => steps.find((step) => step.id === currentStep)?.label ?? "", [currentStep]);
 
+  function showSubmissionError(message: string) {
+    setErrorMessage(message);
+
+    if (typeof window !== "undefined") {
+      window.alert(message);
+    }
+  }
+
   function updateField<K extends keyof StudentWizardFormState>(key: K, value: StudentWizardFormState[K]) {
     setFormData((prev) => ({ ...prev, [key]: value }));
     setErrorMessage(null);
@@ -184,24 +192,25 @@ export default function NewStudentWizardPage() {
 
         const rawText = await response.text();
         let result = null as
-          | { success?: boolean; message?: string; errors?: FieldErrors }
+          | { success?: boolean; message?: string; error?: string; errors?: FieldErrors }
           | null;
 
         if (rawText) {
           try {
-            result = JSON.parse(rawText) as { success?: boolean; message?: string; errors?: FieldErrors };
+            result = JSON.parse(rawText) as { success?: boolean; message?: string; error?: string; errors?: FieldErrors };
           } catch {
             result = { success: false, message: rawText };
           }
         }
 
         const normalizedResult = result as
-          | { success?: boolean; message?: string; errors?: FieldErrors }
+          | { success?: boolean; message?: string; error?: string; errors?: FieldErrors }
           | null;
 
         if (!response.ok || !normalizedResult?.success) {
           const nextErrors = normalizedResult?.errors ?? {};
-          setErrorMessage(normalizedResult?.message ?? "Gagal menyimpan murid.");
+          const submissionMessage = normalizedResult?.message ?? normalizedResult?.error ?? "Gagal menyimpan murid.";
+          showSubmissionError(submissionMessage);
           setFieldErrors({
             name: nextErrors.name,
             nis: nextErrors.nis,
@@ -219,8 +228,9 @@ export default function NewStudentWizardPage() {
         }
 
         router.push("/students");
+        router.refresh();
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Gagal menyimpan murid.");
+        showSubmissionError(error instanceof Error ? error.message : "Gagal menyimpan murid.");
       }
     });
   }
