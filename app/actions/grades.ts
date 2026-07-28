@@ -63,7 +63,9 @@ async function resolveTenantContext(tenantSlugOrId: string) {
   }
 
   const [cookieStore, session] = await Promise.all([
-    cookies(),
+    Promise.resolve()
+      .then(() => cookies())
+      .catch(() => ({ get: () => undefined })),
     getCurrentSession().catch(() => null)
   ]);
   const activeTenantSlug = decodeURIComponent(cookieStore.get(ACTIVE_TENANT_SLUG_COOKIE_NAME)?.value ?? "").trim();
@@ -275,8 +277,22 @@ export async function getOptionsForGradeForm(tenantSlug: string) {
 
     const coursesMap = new Map<string, { id: string; code: string | null; name: string }>();
     for (const s of schedules) {
-      if (!coursesMap.has(s.course.id)) {
-        coursesMap.set(s.course.id, { id: s.course.id, code: s.course.code ?? null, name: s.course.name });
+      if (s?.course?.id && !coursesMap.has(s.course.id)) {
+        coursesMap.set(s.course.id, {
+          id: s.course.id,
+          code: s.course.code ?? null,
+          name: s.course.name ?? "Mata Pelajaran"
+        });
+      }
+    }
+    if (coursesMap.size === 0) {
+      const allCourses = await prisma.course.findMany({
+        where: { tenantId: tenantContext.tenantId },
+        orderBy: [{ code: "asc" }, { name: "asc" }],
+        select: { id: true, code: true, name: true }
+      });
+      for (const c of allCourses) {
+        coursesMap.set(c.id, { id: c.id, code: c.code ?? null, name: c.name });
       }
     }
     const courses = Array.from(coursesMap.values());

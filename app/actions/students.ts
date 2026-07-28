@@ -26,7 +26,9 @@ async function resolveTenantContext(tenantSlugOrId: string) {
   }
 
   const [cookieStore, session] = await Promise.all([
-    cookies(),
+    Promise.resolve()
+      .then(() => cookies())
+      .catch(() => ({ get: () => undefined })),
     getCurrentSession().catch(() => null)
   ]);
   const activeTenantSlug = decodeURIComponent(cookieStore.get(ACTIVE_TENANT_SLUG_COOKIE_NAME)?.value ?? "").trim();
