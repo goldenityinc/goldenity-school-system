@@ -166,11 +166,17 @@ export default function SchedulesPage() {
   }, [tenantScope]);
 
   useEffect(() => {
-    void loadSchedules();
+    const t = window.setTimeout(() => {
+      void loadSchedules();
+    }, 200);
+    return () => window.clearTimeout(t);
   }, [loadSchedules]);
 
   useEffect(() => {
-    void loadOptions();
+    const t = window.setTimeout(() => {
+      void loadOptions();
+    }, 0);
+    return () => window.clearTimeout(t);
   }, [loadOptions]);
 
   function openCreateModal() {
