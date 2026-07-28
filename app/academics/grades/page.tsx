@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
-import Button from "../../../components/ui/Button";
-import Modal from "../../../components/ui/Modal";
-import { useTenant } from "../../../contexts/TenantContext";
+import { Button } from "../../../components/ui/button";
+import { Modal } from "../../../components/ui/modal";
+import { useTenant } from "../../../components/tenant-context";
 import {
   createGrade,
   deleteGrade,
@@ -14,7 +14,7 @@ import {
   updateGrade,
   type CreateGradeInput,
   type GradeListRow
-} from "../../../actions/grades";
+} from "../../actions/grades";
 
 type Option = { id: string; label: string };
 type ScheduleOption = Option & { courseId: string };

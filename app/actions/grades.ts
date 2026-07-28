@@ -578,3 +578,192 @@ export async function deleteGrade(id: string, tenantSlugOrId: string) {
 
   revalidateGrades(tenantContext?.tenantSlug);
 }
+
+type LegacyGradeRow = {
+  id: string;
+  studentId: string;
+  courseOfferingId: string;
+  type: string;
+  score: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  courseOffering: {
+    id: string;
+    term: string;
+    academicYear: string;
+    lecturer: {
+      id: string;
+      name: string;
+      nip: string;
+    } | null;
+    courseCode: string;
+    courseName: string;
+  };
+};
+
+export async function getStudentGrades(tenantSlugOrId: string, studentId: string): Promise<LegacyGradeRow[]> {
+  try {
+    const tenantContext = await resolveTenantContext(tenantSlugOrId);
+    const tenantId = tenantContext?.tenantId;
+    if (!tenantId || !studentId) {
+      return [];
+    }
+
+    const rows = await prisma.grade.findMany({
+      where: { tenantId, studentId: studentId.trim() },
+      orderBy: [{ createdAt: "asc" }],
+      select: {
+        id: true,
+        studentId: true,
+        courseOfferingId: true,
+        type: true,
+        score: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+        courseOffering: {
+          select: {
+            id: true,
+            term: true,
+            academicYear: true,
+            course: {
+              select: {
+                code: true,
+                name: true
+              }
+            },
+            lecturer: {
+              select: {
+                id: true,
+                fullName: true,
+                staffId: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return rows.map((g) => ({
+      id: g.id,
+      studentId: g.studentId,
+      courseOfferingId: g.courseOfferingId ?? "",
+      type: g.type || "",
+      score: g.score,
+      notes: g.notes ?? null,
+      createdAt: g.createdAt.toISOString(),
+      updatedAt: g.updatedAt.toISOString(),
+      courseOffering: {
+        id: g.courseOffering?.id ?? "",
+        term: g.courseOffering?.term || "",
+        academicYear: g.courseOffering?.academicYear || "",
+        lecturer: g.courseOffering?.lecturer
+          ? {
+              id: g.courseOffering.lecturer.id,
+              name: g.courseOffering.lecturer.fullName || "",
+              nip: g.courseOffering.lecturer.staffId || ""
+            }
+          : null,
+        courseCode: g.courseOffering?.course?.code ?? "",
+        courseName: g.courseOffering?.course?.name ?? ""
+      }
+    }));
+  } catch (error) {
+    console.error("PRISMA STUDENT GRADES FETCH ERROR:", error);
+    return [];
+  }
+}
+
+export async function inputGrade(
+  _tenantId: string,
+  studentId: string,
+  courseOfferingId: string,
+  type: string,
+  score: number
+): Promise<{ success: boolean; error?: string; id?: string }> {
+  const resolved = await resolveTenantContext(_tenantId);
+  if (!resolved?.tenantId) {
+    return { success: false, error: "Sesi tenant tidak valid." };
+  }
+  try {
+    const created = await prisma.grade.create({
+      data: {
+        tenantId: resolved.tenantId,
+        studentId: studentId.trim(),
+        courseOfferingId: courseOfferingId.trim() || null,
+        type: type.trim() || "TUGAS",
+        score,
+        notes: null
+      }
+    });
+    revalidateGrades(resolved.tenantSlug);
+    return { success: true, id: created.id };
+  } catch (error) {
+    console.error("inputGrade error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal menyimpan nilai."
+    };
+  }
+}
+
+export async function getGradesByCourseOffering(tenantSlugOrId: string, courseOfferingId: string): Promise<LegacyGradeRow[]> {
+  try {
+    const tenantContext = await resolveTenantContext(tenantSlugOrId);
+    const tenantId = tenantContext?.tenantId;
+    if (!tenantId || !courseOfferingId) {
+      return [];
+    }
+    const rows = await prisma.grade.findMany({
+      where: { tenantId, courseOfferingId: courseOfferingId.trim() },
+      orderBy: [{ createdAt: "asc" }],
+      select: {
+        id: true,
+        studentId: true,
+        courseOfferingId: true,
+        type: true,
+        score: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+        courseOffering: {
+          select: {
+            id: true,
+            term: true,
+            academicYear: true,
+            course: { select: { code: true, name: true } },
+            lecturer: { select: { id: true, fullName: true, staffId: true } }
+          }
+        }
+      }
+    });
+    return rows.map((g) => ({
+      id: g.id,
+      studentId: g.studentId,
+      courseOfferingId: g.courseOfferingId ?? "",
+      type: g.type || "",
+      score: g.score,
+      notes: g.notes ?? null,
+      createdAt: g.createdAt.toISOString(),
+      updatedAt: g.updatedAt.toISOString(),
+      courseOffering: {
+        id: g.courseOffering?.id ?? "",
+        term: g.courseOffering?.term || "",
+        academicYear: g.courseOffering?.academicYear || "",
+        lecturer: g.courseOffering?.lecturer
+          ? {
+              id: g.courseOffering.lecturer.id,
+              name: g.courseOffering.lecturer.fullName || "",
+              nip: g.courseOffering.lecturer.staffId || ""
+            }
+          : null,
+        courseCode: g.courseOffering?.course?.code ?? "",
+        courseName: g.courseOffering?.course?.name ?? ""
+      }
+    }));
+  } catch (error) {
+    console.error("getGradesByCourseOffering error:", error);
+    return [];
+  }
+}
