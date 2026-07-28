@@ -26,7 +26,11 @@ export const authOptions: NextAuthOptions = {
           ? ((credentials as Record<string, string>).solution ?? "")
           : undefined;
 
-        const user = await verifyLoginWithCentralCommand(credentials.email, credentials.password, solution);
+        const user = await verifyLoginWithCentralCommand({
+          email: credentials.email,
+          password: credentials.password,
+          requestedSolution: solution
+        });
         return user;
       }
     })

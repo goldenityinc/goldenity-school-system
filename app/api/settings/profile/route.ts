@@ -304,7 +304,12 @@ export async function PUT(request: Request) {
 
     if (!isPasswordValid && session.email) {
       try {
-        await verifyLoginWithCentralCommand(session.email, body.currentPassword, "SCHOOL_ERP");
+        await verifyLoginWithCentralCommand({
+          email: session.email,
+          password: body.currentPassword,
+          requestedSolution: "SCHOOL_ERP",
+          tenantSlug: session.tenantName ?? undefined
+        });
         isPasswordValid = true;
       } catch {
         isPasswordValid = false;

@@ -16,6 +16,24 @@ type AcademicsSubItem = {
   href: string;
 };
 
+function getTenantLoginPath(pathname: string): string | null {
+  const match = pathname.match(/^\/school-erp\/([^/]+)\/login\/?$/);
+  if (match?.[1]) {
+    return `/school-erp/${encodeURIComponent(decodeURIComponent(match[1]))}/login`;
+  }
+
+  const tenantRouteMatch = pathname.match(/^\/school-erp\/([^/]+)(?:\/.*)?$/);
+  if (tenantRouteMatch?.[1]) {
+    return `/school-erp/${encodeURIComponent(decodeURIComponent(tenantRouteMatch[1]))}/login`;
+  }
+
+  return null;
+}
+
+function isPublicAuthPath(pathname: string): boolean {
+  return pathname === "/login" || /^\/school-erp\/[^/]+\/login\/?$/.test(pathname);
+}
+
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/" },
   { label: "Murid", href: "/students" },
@@ -42,6 +60,8 @@ function roleLabel(role?: string) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const loginPath = getTenantLoginPath(pathname) ?? "/login";
+  const isPublicAuthPage = isPublicAuthPath(pathname);
   const [isAcademicsExpanded, setIsAcademicsExpanded] = useState(false);
   const [session, setSession] = useState<{
     user?: {
@@ -55,7 +75,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   } | null>(null);
 
   useEffect(() => {
-    if (pathname === "/login") {
+    if (isPublicAuthPage) {
       return;
     }
 
@@ -72,11 +92,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       }
 
       if (!response.ok) {
-        router.replace("/login");
+        router.replace(loginPath);
         return;
       }
 
       const payload = (await response.json()) as {
+        authenticated?: boolean;
         session?: {
           role?: string;
           name?: string;
@@ -86,6 +107,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           tenantName?: string;
         };
       };
+
+      if (payload.authenticated === false) {
+        router.replace(loginPath);
+        return;
+      }
 
       setSession({
         user: {
@@ -104,9 +130,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return () => {
       isActive = false;
     };
-  }, [pathname, router]);
+  }, [isPublicAuthPage, loginPath, router]);
 
-  if (pathname === "/login") {
+  if (isPublicAuthPage) {
     return <>{children}</>;
   }
 
@@ -225,7 +251,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={async () => {
                   await fetch("/api/auth/logout", { method: "POST" });
-                  router.replace("/login");
+                  router.replace(loginPath);
                 }}
               >
                 Logout
