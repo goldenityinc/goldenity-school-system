@@ -200,8 +200,20 @@ export async function getStudentById(tenantId: string, studentId: string) {
           include: {
             courseOffering: {
               include: {
-                course: true,
-                lecturer: true
+                course: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true
+                  }
+                },
+                lecturer: {
+                  select: {
+                    id: true,
+                    staffId: true,
+                    fullName: true
+                  }
+                }
               }
             }
           }

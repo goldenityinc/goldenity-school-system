@@ -177,8 +177,20 @@ export async function getRecentStudents(tenantId: string) {
         include: {
           courseOffering: {
             include: {
-              course: true,
-              lecturer: true
+              course: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true
+                }
+              },
+              lecturer: {
+                select: {
+                  id: true,
+                  staffId: true,
+                  fullName: true
+                }
+              }
             }
           }
         }

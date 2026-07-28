@@ -153,7 +153,7 @@ model Student {
 model Classroom {
   id                String   @id @default(cuid())
   tenantId          String
-  code              String
+  code              String?
   name              String
   capacity          Int?
   academicYear      String
@@ -166,7 +166,6 @@ model Classroom {
   students          Student[]
   courseOfferings   CourseOffering[]
 
-  @@unique([tenantId, code, academicYear, semester])
   @@index([tenantId])
   @@index([code])
   @@index([homeroomTeacherId])
