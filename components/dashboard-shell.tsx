@@ -17,6 +17,10 @@ type AcademicsSubItem = {
 };
 
 function getTenantLoginPath(pathname: string): string | null {
+  if (/^\/school-erp\/psb\/[^/]+(?:\/.*)?$/.test(pathname)) {
+    return null;
+  }
+
   const match = pathname.match(/^\/school-erp\/([^/]+)\/login\/?$/);
   if (match?.[1]) {
     return `/school-erp/${encodeURIComponent(decodeURIComponent(match[1]))}/login`;
@@ -30,8 +34,12 @@ function getTenantLoginPath(pathname: string): string | null {
   return null;
 }
 
-function isPublicAuthPath(pathname: string): boolean {
-  return pathname === "/login" || /^\/school-erp\/[^/]+\/login\/?$/.test(pathname);
+function isShelllessPath(pathname: string): boolean {
+  return (
+    pathname === "/login" ||
+    /^\/school-erp\/[^/]+\/login\/?$/.test(pathname) ||
+    /^\/school-erp\/psb\/[^/]+(?:\/.*)?$/.test(pathname)
+  );
 }
 
 const navItems: NavItem[] = [
@@ -57,11 +65,13 @@ function roleLabel(role?: string) {
   return "Pengguna";
 }
 
+const LAST_REDIRECT_KEY = "goldenity.school.lastClientLoginRedirect";
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const loginPath = getTenantLoginPath(pathname) ?? "/login";
-  const isPublicAuthPage = isPublicAuthPath(pathname);
+  const isShelllessPage = isShelllessPath(pathname);
   const [isAcademicsExpanded, setIsAcademicsExpanded] = useState(false);
   const [session, setSession] = useState<{
     user?: {
@@ -75,11 +85,26 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   } | null>(null);
 
   useEffect(() => {
-    if (isPublicAuthPage) {
+    if (isShelllessPage) {
       return;
     }
 
     let isActive = true;
+
+    function goToLogin() {
+      if (typeof window === "undefined") {
+        router.replace(loginPath);
+        return;
+      }
+      const now = Date.now();
+      const lastValue = window.sessionStorage.getItem(LAST_REDIRECT_KEY);
+      const parsed = lastValue ? (JSON.parse(lastValue) as { at?: number; path?: string }) : null;
+      if (parsed?.path === loginPath && typeof parsed?.at === "number" && now - parsed.at < 10000) {
+        return;
+      }
+      window.sessionStorage.setItem(LAST_REDIRECT_KEY, JSON.stringify({ at: now, path: loginPath }));
+      router.replace(loginPath);
+    }
 
     async function loadSession() {
       const response = await fetch("/api/auth/session", {
@@ -92,7 +117,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       }
 
       if (!response.ok) {
-        router.replace(loginPath);
+        goToLogin();
         return;
       }
 
@@ -109,8 +134,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       };
 
       if (payload.authenticated === false) {
-        router.replace(loginPath);
+        goToLogin();
         return;
+      }
+
+      if (typeof window !== "undefined") {
+        const current = window.sessionStorage.getItem(LAST_REDIRECT_KEY);
+        const parsed = current ? (JSON.parse(current) as { path?: string } | null) : null;
+        if (parsed?.path) {
+          window.sessionStorage.removeItem(LAST_REDIRECT_KEY);
+        }
       }
 
       setSession({
@@ -130,9 +163,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return () => {
       isActive = false;
     };
-  }, [isPublicAuthPage, loginPath, router]);
+  }, [isShelllessPage, loginPath, router]);
 
-  if (isPublicAuthPage) {
+  if (isShelllessPage) {
     return <>{children}</>;
   }
 

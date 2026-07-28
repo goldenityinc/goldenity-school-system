@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
@@ -192,6 +193,18 @@ export default function LoginPage() {
             {isSubmitting ? "Memproses..." : "Masuk"}
           </button>
         </form>
+
+        <div className="mt-6 border-t border-slate-200 pt-6">
+          <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+            Mau lihat demo penerimaan siswa baru?
+          </p>
+          <Link
+            href={`/school-erp/psb/${encodeURIComponent(presetTenantSlug || tenantSlug || "company-1")}`}
+            className="flex h-11 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-yellow-500 hover:text-yellow-600 hover:shadow-sm"
+          >
+            Jelajahi Demo PSB EduCore
+          </Link>
+        </div>
       </div>
     </main>
   );
