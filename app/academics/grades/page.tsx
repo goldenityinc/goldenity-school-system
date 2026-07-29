@@ -44,9 +44,9 @@ function showSubmissionError(
 const EMPTY_FORM_STATE: CreateGradeInput = {
   studentId: "",
   courseId: "",
-  courseOfferingId: "",
-  type: "UTS",
-  score: 0,
+  courseOfferingId: undefined,
+  type: "",
+  score: undefined,
   notes: ""
 };
 
@@ -159,10 +159,10 @@ export default function GradesPage() {
     setFormState({
       studentId: row.student?.id ?? "",
       courseId: row.course?.id ?? "",
-      courseOfferingId: row.schedule?.id ?? "",
-      type: row.type || "UTS",
-      score: row.score,
-      notes: row.notes ?? ""
+      courseOfferingId: row.schedule?.id ?? undefined,
+      type: row.type ?? "",
+      score: typeof row.score === "number" ? Number(row.score) : undefined,
+      notes: row.notes && row.notes.trim() ? row.notes : undefined
     });
     setFormErrors({});
     setIsModalOpen(true);
@@ -176,22 +176,64 @@ export default function GradesPage() {
   };
 
   const updateField = <K extends keyof CreateGradeInput>(key: K, value: CreateGradeInput[K]) => {
-    setFormState((prev) => ({ ...prev, [key]: value }));
+    let nextValue: unknown = value;
+    if (key === "score") {
+      if (typeof value === "string") {
+        nextValue = value.trim() === "" ? undefined : Number(value);
+      } else if (typeof value === "number") {
+        nextValue = Number.isNaN(value) ? undefined : value;
+      } else {
+        nextValue = undefined;
+      }
+    }
+    if (key === "courseOfferingId") {
+      if (typeof value === "string") {
+        nextValue = value.trim() === "" ? undefined : value;
+      }
+    }
+    if (key === "type" && typeof value === "string") {
+      nextValue = value.trim() === "" ? undefined : value;
+    }
+    if (key === "studentId" && typeof value === "string") {
+      nextValue = value.trim();
+    }
+    if (key === "courseId" && typeof value === "string") {
+      nextValue = value.trim();
+    }
+    if (key === "notes" && typeof value === "string") {
+      nextValue = value.trim() === "" ? undefined : value;
+    }
+    setFormState((prev) => ({ ...prev, [key]: nextValue as CreateGradeInput[K] }));
     setFormErrors((prev) => ({ ...prev, [key]: undefined, general: undefined }));
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = (): { valid: boolean; errors: FormErrors } => {
     const errors: FormErrors = {};
     if (!formState.studentId) errors.studentId = "Murid wajib dipilih";
     if (!formState.courseId) errors.courseId = "Mata pelajaran wajib dipilih";
-    if (!formState.type) errors.type = "Tipe penilaian wajib diisi";
-    if (typeof formState.score !== "number" || Number.isNaN(formState.score)) {
+    if (!formState.type) errors.type = "Tipe penilaian wajib dipilih";
+    if (formState.score === undefined || formState.score === null) {
+      errors.score = "Nilai wajib diisi";
+    } else if (typeof formState.score !== "number" || Number.isNaN(formState.score)) {
       errors.score = "Nilai harus berupa angka";
     } else if (formState.score < 0 || formState.score > 100) {
-      errors.score = "Nilai harus 0 - 100";
+      errors.score = "Nilai harus di antara 0 - 100";
     }
+    if (typeof formState.notes === "string" && formState.notes.length > 1000) {
+      errors.notes = "Catatan maksimal 1000 karakter";
+    }
+    console.log("[GradesPage.validateForm] formState snapshot:", {
+      studentId: formState.studentId,
+      courseId: formState.courseId,
+      courseOfferingId: formState.courseOfferingId,
+      type: formState.type,
+      score: formState.score,
+      scoreType: typeof formState.score,
+      notesLen: typeof formState.notes === "string" ? formState.notes.length : 0
+    });
+    console.log("[GradesPage.validateForm] errors object:", errors);
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    return { valid: Object.keys(errors).length === 0, errors };
   };
 
   const handleSubmit = async () => {
@@ -199,13 +241,13 @@ export default function GradesPage() {
       showSubmissionError("Tenant belum dipilih. Pilih tenant dari dashboard atau lewat URL.", setToast, setFormErrors);
       return;
     }
-    if (!validateForm()) {
-      showSubmissionError(
-        "Perbaiki error di form terlebih dahulu.",
-        setToast,
-        setFormErrors,
-        { ...formErrors, general: "Perbaiki error di form." }
-      );
+    const { valid, errors: clientErrors } = validateForm();
+    console.log("[GradesPage.handleSubmit] validateForm result:", { valid, clientErrors });
+    if (!valid) {
+      const firstField = clientErrors.studentId || clientErrors.courseId || clientErrors.type || clientErrors.score;
+      const genericMsg = firstField ? `Perbaiki kolom yang salah: ${firstField}` : "Perbaiki error di form terlebih dahulu.";
+      console.warn("[GradesPage.handleSubmit] ABORT — client validation errors:", clientErrors);
+      showSubmissionError(genericMsg, setToast, setFormErrors, { ...clientErrors, general: firstField || "Perbaiki error di form." });
       return;
     }
 
@@ -215,14 +257,16 @@ export default function GradesPage() {
         studentId: formState.studentId,
         courseId: formState.courseId,
         courseOfferingId: formState.courseOfferingId || undefined,
-        type: formState.type,
+        type: formState.type!,
         score: Number(formState.score),
         notes: formState.notes || undefined
       };
+      console.log("[GradesPage.handleSubmit] POST payload ke Server Action create/updateGrade:", payload, "editing:", !!editingGradeId);
 
       const result = editingGradeId
         ? await updateGrade(tenantScope, editingGradeId, payload)
         : await createGrade(tenantScope, payload);
+      console.log("[GradesPage.handleSubmit] Server Action result:", result);
 
       if (!result.success) {
         showSubmissionError(
@@ -243,7 +287,7 @@ export default function GradesPage() {
         loadGrades();
       });
     } catch (error) {
-      console.error("[GradesPage.handleSubmit]", error);
+      console.error("[GradesPage.handleSubmit] UNCAUGHT:", error);
       showSubmissionError(
         "Terjadi kesalahan tak terduga saat menyimpan nilai.",
         setToast,
