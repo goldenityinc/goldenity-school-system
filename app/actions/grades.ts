@@ -9,7 +9,7 @@ import { getCurrentSession } from "../../lib/utils/jwt";
 
 const ACTIVE_TENANT_SLUG_COOKIE_NAME = "goldenity_school_active_tenant_slug";
 
-export const GradeSchema = z.object({
+const GradeSchema = z.object({
   studentId: z.string().min(1, "Murid wajib dipilih"),
   courseId: z.string().min(1, "Mata pelajaran wajib dipilih"),
   courseOfferingId: z.string().optional(),
