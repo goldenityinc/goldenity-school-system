@@ -435,7 +435,7 @@ export default function GradesPage() {
         </table>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingGradeId ? "Edit Nilai" : "Tambah Nilai"}>
+      <Modal open={isModalOpen} onClose={closeModal} title={editingGradeId ? "Edit Nilai" : "Tambah Nilai"}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <label htmlFor="grade-student" className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -588,7 +588,7 @@ export default function GradesPage() {
       </Modal>
 
       <Modal
-        isOpen={!!deletingId}
+        open={!!deletingId}
         onClose={() => setDeletingId(null)}
         title="Hapus Nilai"
         description="Tindakan ini tidak bisa dibatalkan. Pastikan nilai yang dihapus sudah benar."
@@ -608,7 +608,7 @@ export default function GradesPage() {
           </button>
           <Button
             onClick={confirmDelete}
-            tone="danger"
+            variant="danger"
             disabled={isDeleting}
           >
             {isDeleting ? "Menghapus..." : "Hapus Nilai"}
