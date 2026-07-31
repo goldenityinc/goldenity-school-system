@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BookOpen, GraduationCap, Truck } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 export default function SchoolTenantLoginPage() {
@@ -155,15 +156,49 @@ export default function SchoolTenantLoginPage() {
         </form>
 
         <div className="mt-6 border-t border-slate-200 pt-6">
-          <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
-            Mau lihat demo penerimaan siswa baru?
-          </p>
-          <Link
-            href={`/school-erp/psb/${encodeURIComponent(tenantSlug || "company-1")}`}
-            className="flex h-11 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-yellow-500 hover:text-yellow-600 hover:shadow-sm"
-          >
-            Jelajahi Demo PSB EduCore
-          </Link>
+          <div className="mb-4">
+            <p className="text-center text-sm font-semibold text-slate-700">
+              Jelajahi Demo Aplikasi Goldenity EduCore
+            </p>
+            <p className="mt-1 text-center text-xs text-slate-500">
+              Pilih salah satu aplikasi demo untuk melihat tampilan langsung
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Link
+              href={`/school-erp/psb/${encodeURIComponent(tenantSlug || "company-1")}`}
+              className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-500/30 transition group-hover:scale-110">
+                <BookOpen className="h-5 w-5" />
+              </span>
+              <p className="text-xs font-semibold text-slate-800">Sistem PSB</p>
+              <p className="text-[10px] font-medium text-slate-500">Penerimaan Siswa Baru</p>
+            </Link>
+
+            <Link
+              href={`/school-erp/teacher/${encodeURIComponent(tenantSlug || "company-1")}`}
+              className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30 transition group-hover:scale-110">
+                <GraduationCap className="h-5 w-5" />
+              </span>
+              <p className="text-xs font-semibold text-slate-800">Aplikasi Guru</p>
+              <p className="text-[10px] font-medium text-slate-500">Dashboard Wali Kelas</p>
+            </Link>
+
+            <Link
+              href={`/school-erp/driver/${encodeURIComponent(tenantSlug || "company-1")}`}
+              className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30 transition group-hover:scale-110">
+                <Truck className="h-5 w-5" />
+              </span>
+              <p className="text-xs font-semibold text-slate-800">Aplikasi Driver</p>
+              <p className="text-[10px] font-medium text-slate-500">Antar Jemput Siswa</p>
+            </Link>
+          </div>
         </div>
       </div>
     </main>

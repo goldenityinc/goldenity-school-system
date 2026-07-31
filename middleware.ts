@@ -7,6 +7,8 @@ const ACTIVE_TENANT_COOKIE_NAME = "goldenity_school_active_tenant_slug";
 const TENANT_LOGIN_RE = /^\/school-erp\/([^/]+)\/login\/?$/;
 const TENANT_ROUTE_RE = /^\/school-erp\/([^/]+)(?:\/(.*))?$/;
 const PSB_ROUTE_RE = /^\/school-erp\/psb\/[^/]+(?:\/.*)?$/;
+const DRIVER_ROUTE_RE = /^\/school-erp\/driver\/[^/]+(?:\/.*)?$/;
+const TEACHER_ROUTE_RE = /^\/school-erp\/teacher\/[^/]+(?:\/.*)?$/;
 
 function decodeBase64Url(input: string) {
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -69,7 +71,7 @@ export default function middleware(request: NextRequest) {
   const hasValidToken = isUsableAuthToken(token);
   const { pathname } = request.nextUrl;
 
-  if (PSB_ROUTE_RE.test(pathname)) {
+  if (PSB_ROUTE_RE.test(pathname) || DRIVER_ROUTE_RE.test(pathname) || TEACHER_ROUTE_RE.test(pathname)) {
     return NextResponse.next();
   }
 

@@ -21,6 +21,14 @@ function getTenantLoginPath(pathname: string): string | null {
     return null;
   }
 
+  if (/^\/school-erp\/driver\/[^/]+(?:\/.*)?$/.test(pathname)) {
+    return null;
+  }
+
+  if (/^\/school-erp\/teacher\/[^/]+(?:\/.*)?$/.test(pathname)) {
+    return null;
+  }
+
   const match = pathname.match(/^\/school-erp\/([^/]+)\/login\/?$/);
   if (match?.[1]) {
     return `/school-erp/${encodeURIComponent(decodeURIComponent(match[1]))}/login`;
@@ -38,7 +46,9 @@ function isShelllessPath(pathname: string): boolean {
   return (
     pathname === "/login" ||
     /^\/school-erp\/[^/]+\/login\/?$/.test(pathname) ||
-    /^\/school-erp\/psb\/[^/]+(?:\/.*)?$/.test(pathname)
+    /^\/school-erp\/psb\/[^/]+(?:\/.*)?$/.test(pathname) ||
+    /^\/school-erp\/driver\/[^/]+(?:\/.*)?$/.test(pathname) ||
+    /^\/school-erp\/teacher\/[^/]+(?:\/.*)?$/.test(pathname)
   );
 }
 
